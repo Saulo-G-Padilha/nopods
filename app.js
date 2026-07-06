@@ -93,11 +93,44 @@
   const BREATH_LABELS = ['Inspire...', 'Segure...', 'Expire...', 'Segure...'];
 
   const TAB_TITLES = {
-    home: 'Início',
+    home: 'Painel',
     cravings: 'Fissuras',
     progress: 'Progresso',
     future: 'Futuro',
   };
+
+  const MOTIVATIONAL_MESSAGES = [
+    'Cada hora sem pod é uma vitória silenciosa. Você está vencendo.',
+    'A fissura é um visitante — ela bate, você não abre a porta.',
+    'Seu corpo está se curando agora mesmo. Confie no processo.',
+    'Você não perdeu o pod — você ganhou liberdade.',
+    'Respirar fundo custa zero e funciona melhor que nicotina.',
+    'O impulso passa em minutos. A liberdade fica para sempre.',
+    'Você já provou que é capaz. Hoje é mais um dia de prova.',
+    'Soltar um hábito é difícil porque você é humano, não fraco.',
+    'Cada fissura que você solta reescreve seu cérebro.',
+    'O dinheiro que você economiza é só um bônus. A paz é o prêmio.',
+    'Nicotina mentiu para você por anos. Hoje você vê a verdade.',
+    'Não é sobre nunca sentir fissura — é sobre escolher não ceder.',
+    'Seu eu de amanhã vai agradecer por esta hora.',
+    'A dependência foi construída puff a puff. A liberdade também, dia a dia.',
+    'Você merece acordar sem precisar de um pod para funcionar.',
+    'Estresse, tédio, ansiedade — a fissura sempre inventa desculpas. Você inventa saídas.',
+    'Quanto mais dias passam, mais raro fica o impulso. Continue.',
+    'Liberdade não é fazer o que quer — é não ser escravo do pod.',
+    'Seu pulmão, seu coração, seu bolso — todos torcendo por você.',
+    'Recomeçar depois de tropeçar ainda é coragem. Siga.',
+    'A nicotina saiu do seu sangue. Agora o hábito está saindo da mente.',
+    'Você não está perdendo nada. Está recuperando tudo.',
+    'Hoje você escolheu ser mais forte que um líquido em um cartucho.',
+    'A melhor versão de você não precisa de sais de nicotina.',
+    'Cada "não" ao pod é um "sim" para a sua vida.',
+    'A fissura grita. Você responde com calma. Ela cede primeiro.',
+    'Você está desaprendendo um hábito poderoso. Isso leva tempo — e vale a pena.',
+    'O pod prometia alívio. Só entregava mais necessidade.',
+    'Seu progresso é real, mesmo nos dias difíceis.',
+    'Amanhecer sem fissura é possível. Você está chegando lá.',
+  ];
 
   const CRAVING_STEPS = [
     {
@@ -161,6 +194,9 @@
   let stepTotalSeconds = 60;
   let selectedTrigger = null;
   let selectedSubstitute = null;
+  let selectedTimelineFilter = 'all';
+  let selectedTimelineId = null;
+  let motivationIndex = null;
   let activeTab = 'home';
   let toastTimeout = null;
   let scrollPosition = 0;
@@ -484,6 +520,7 @@
     haptic(8);
     if (tab === 'future') renderFuture();
     if (tab === 'progress') renderLifetime();
+    if (tab === 'home') renderDashboard();
     if (tab === 'cravings') {
       renderDailyCravings();
       renderTriggerMap();
@@ -541,6 +578,25 @@
 
     $$('.mood-btn').forEach((btn) => {
       btn.addEventListener('click', () => setMood(btn.dataset.mood));
+    });
+
+    $('#btn-new-motivation')?.addEventListener('click', () => {
+      renderMotivation(true);
+      haptic(8);
+    });
+
+    $$('.timeline-filter').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        selectedTimelineFilter = btn.dataset.filter;
+        selectedTimelineId = null;
+        $$('.timeline-filter').forEach((b) => {
+          const on = b.dataset.filter === selectedTimelineFilter;
+          b.classList.toggle('active', on);
+          b.setAttribute('aria-selected', on);
+        });
+        renderInteractiveTimeline();
+        haptic(8);
+      });
     });
 
     $('#btn-settings').addEventListener('click', openSettings);
@@ -615,6 +671,9 @@
     saveData();
     $$('.mood-btn').forEach((btn) => btn.classList.toggle('selected', btn.dataset.mood === mood));
     $('#checkin-message').textContent = MOOD_MESSAGES[mood];
+    motivationIndex = null;
+    renderMotivation();
+    renderDashboardPills();
     haptic(10);
   }
 
@@ -771,6 +830,8 @@
     closeTriggerModal();
     renderTriggerMap();
     renderCravingLog();
+    renderPeakHours();
+    renderInteractiveTimeline();
   }
 
   function closeTriggerModal() {
@@ -885,6 +946,7 @@
     renderCravingLog();
     renderDailyCravings();
     renderNextMilestone();
+    renderDashboard();
     haptic([30, 50, 30]);
     const today = getCravingsOnDate(dateKey(new Date()));
     showToast(`Você soltou essa fissura! Hoje: ${today} 🌿`);
@@ -941,6 +1003,291 @@
       </div>
     `).join('');
   }
+
+  function getPeakHourInfo() {
+    const hours = Array(24).fill(0);
+    (data.cravingLog || []).forEach((e) => {
+      hours[new Date(e.time).getHours()]++;
+    });
+    const max = Math.max(...hours, 0);
+    if (max === 0) return { hasData: false, peakHour: null, hours, max: 0 };
+    const peakHour = hours.indexOf(max);
+    return { hasData: true, peakHour, hours, max };
+  }
+
+  function getContextualMotivationPool() {
+    const today = dateKey(new Date());
+    const mood = data.moods[today];
+    const days = getCurrentAttemptDays();
+    const peak = getPeakHourInfo();
+
+    if (mood === 'hard') return [9, 15, 19, 21, 29];
+    if (mood === 'strong' || mood === 'great') return [6, 7, 23, 24, 29];
+    if (days < 3) return [0, 5, 8, 16, 17, 28];
+    if (peak.hasData && peak.peakHour === new Date().getHours()) return [1, 8, 14, 27];
+    return null;
+  }
+
+  function renderMotivation(forceNew = false) {
+    const el = $('#motivation-text');
+    if (!el) return;
+
+    const indices = getContextualMotivationPool();
+    const pool = indices || MOTIVATIONAL_MESSAGES.map((_, i) => i);
+
+    if (forceNew) {
+      const candidates = pool.filter((i) => i !== motivationIndex);
+      motivationIndex = candidates[Math.floor(Math.random() * candidates.length)] ?? pool[0];
+    } else if (motivationIndex === null) {
+      motivationIndex = pool[new Date().getDate() % pool.length];
+    }
+
+    el.textContent = MOTIVATIONAL_MESSAGES[motivationIndex];
+  }
+
+  function renderDashboardPills() {
+    const container = $('#dashboard-pills');
+    if (!container) return;
+
+    const todayCount = getCravingsOnDate(dateKey(new Date()));
+    const streak = calcStreak();
+    const hours = getElapsedHours();
+    const next = MILESTONES.find((m) => hours < m.hours);
+    const peak = getPeakHourInfo();
+    const nowHour = new Date().getHours();
+    const pills = [];
+
+    pills.push(`<span class="dash-pill accent">Hoje: <strong>${todayCount}</strong> fissura${todayCount !== 1 ? 's' : ''}</span>`);
+
+    if (streak > 0) {
+      pills.push(`<span class="dash-pill">Sequência: <strong>${streak}</strong> dia${streak > 1 ? 's' : ''}</span>`);
+    }
+
+    if (next) {
+      pills.push(`<span class="dash-pill">Próximo: <strong>${next.icon} ${next.title}</strong></span>`);
+    }
+
+    if (peak.hasData) {
+      const isNow = peak.peakHour === nowHour;
+      const label = isNow ? 'Horário de pico agora' : `Pico às ${String(peak.peakHour).padStart(2, '0')}h`;
+      pills.push(`<span class="dash-pill warn">${label}</span>`);
+    }
+
+    const mood = data.moods[dateKey(new Date())];
+    if (mood) {
+      const moodIcons = { great: '😊', ok: '😐', hard: '😔', strong: '💪' };
+      pills.push(`<span class="dash-pill">Humor: <strong>${moodIcons[mood] || '—'}</strong></span>`);
+    }
+
+    container.innerHTML = pills.join('');
+  }
+
+  function renderPeakHours() {
+    const chart = $('#peak-hours-chart');
+    const insight = $('#peak-hours-insight');
+    const badge = $('#peak-hour-badge');
+    if (!chart || !insight) return;
+
+    const { hasData, peakHour, hours, max } = getPeakHourInfo();
+
+    if (!hasData) {
+      chart.innerHTML = '';
+      insight.textContent = 'Registre fissuras com o botão Soltar para descobrir em quais horários elas costumam bater.';
+      if (badge) badge.classList.add('hidden');
+      return;
+    }
+
+    const nowHour = new Date().getHours();
+    const majorHours = [0, 6, 12, 18];
+
+    chart.innerHTML = hours.map((count, h) => {
+      const pct = Math.max(8, (count / max) * 100);
+      const isPeak = count === max && count > 0;
+      const isHigh = count >= max * 0.7 && count > 0;
+      let cls = 'peak-hour-bar';
+      if (count > 0) cls += ' has-data';
+      if (isPeak) cls += ' peak';
+      else if (isHigh) cls += ' peak-high';
+      const labelCls = majorHours.includes(h) ? 'peak-hour-label major' : 'peak-hour-label';
+      const showLabel = majorHours.includes(h) ? String(h) : '';
+      return `<div class="peak-hour-bar-wrap" title="${h}h: ${count} fissura${count !== 1 ? 's' : ''}"><div class="${cls}" style="height:${pct}%"></div><span class="${labelCls}">${showLabel}</span></div>`;
+    }).join('');
+
+    if (badge) {
+      badge.classList.remove('hidden');
+      badge.textContent = peakHour === nowHour ? 'Pico agora' : `Pico: ${String(peakHour).padStart(2, '0')}h`;
+    }
+
+    const peakCount = hours[peakHour];
+    const nearby = hours
+      .map((c, h) => ({ h, c }))
+      .filter(({ c }) => c >= max * 0.6)
+      .sort((a, b) => a.h - b.h);
+
+    let rangeText;
+    if (nearby.length <= 1) {
+      rangeText = `às ${peakHour}h`;
+    } else {
+      const start = nearby[0].h;
+      const end = nearby[nearby.length - 1].h;
+      rangeText = start === end ? `às ${start}h` : `entre ${start}h e ${end}h`;
+    }
+
+    const prep = peakHour === nowHour
+      ? 'Você está no seu horário de pico — respire fundo e use o botão Soltar se precisar.'
+      : `Prepare-se ${rangeText}: é quando você mais solta fissuras (${peakCount} no total).`;
+
+    insight.textContent = `Suas fissuras costumam bater ${rangeText}. ${prep}`;
+  }
+
+  function buildTimelineEvents() {
+    const events = [];
+    const quitAt = parseQuitAt(data.quitAt);
+
+    events.push({
+      id: 'start-current',
+      type: 'start',
+      at: quitAt.toISOString(),
+      icon: '🌿',
+      title: 'Você decidiu parar',
+      desc: data.reason || 'Um novo começo — sem pods, com liberdade.',
+      meta: `Desde ${quitAt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}`,
+    });
+
+    const elapsed = getElapsedHours();
+    MILESTONES.forEach((m, i) => {
+      if (elapsed < m.hours) return;
+      const at = new Date(quitAt.getTime() + m.hours * 3600000);
+      events.push({
+        id: `milestone-${i}`,
+        type: 'milestone',
+        at: at.toISOString(),
+        icon: m.icon,
+        title: m.title,
+        desc: m.desc,
+        meta: 'Marco de recuperação alcançado',
+      });
+    });
+
+    (data.cravingLog || []).forEach((entry, i) => {
+      const trigger = entry.trigger ? TRIGGERS.find((t) => t.id === entry.trigger) : null;
+      const substitute = entry.substitute ? SUBSTITUTES.find((s) => s.id === entry.substitute) : null;
+      let desc = 'Você soltou essa fissura sem ceder ao pod.';
+      if (trigger && substitute) desc = `${trigger.icon} ${trigger.label} → ${substitute.icon} ${substitute.label}`;
+      else if (trigger) desc = `Gatilho: ${trigger.icon} ${trigger.label}`;
+      events.push({
+        id: `craving-${i}-${entry.time}`,
+        type: 'craving',
+        at: entry.time,
+        icon: '🔥',
+        title: 'Fissura solta',
+        desc,
+        meta: entry.resisted ? 'Impulso liberado' : '',
+        raw: entry,
+      });
+    });
+
+    (data.relapses || []).forEach((r, i) => {
+      const d = new Date(r.at);
+      events.push({
+        id: `relapse-${i}-${r.at}`,
+        type: 'relapse',
+        at: r.at,
+        icon: '🤍',
+        title: 'Recomeço com compaixão',
+        desc: r.note || 'Um tropeço não apaga sua jornada. Você recomeçou.',
+        meta: r.daysFreeBefore >= 1 ? `${r.daysFreeBefore} dias livres antes` : 'Novo começo',
+        raw: r,
+      });
+    });
+
+    return events.sort((a, b) => new Date(b.at) - new Date(a.at));
+  }
+
+  function formatTimelineWhen(iso) {
+    const d = new Date(iso);
+    const now = new Date();
+    const isToday = dateKey(d) === dateKey(now);
+    const time = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    if (isToday) return `Hoje às ${time}`;
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }) + ' · ' + time;
+  }
+
+  function showTimelineDetail(event) {
+    const panel = $('#timeline-detail');
+    if (!panel || !event) return;
+    panel.classList.remove('hidden');
+    panel.innerHTML = `
+      <div class="timeline-detail-icon">${event.icon}</div>
+      <div class="timeline-detail-title">${event.title}</div>
+      <div class="timeline-detail-body">${event.desc}</div>
+      ${event.meta ? `<div class="timeline-detail-meta">${event.meta}</div>` : ''}
+    `;
+  }
+
+  function renderInteractiveTimeline() {
+    const container = $('#interactive-timeline');
+    if (!container) return;
+
+    const events = buildTimelineEvents().filter((e) => {
+      if (selectedTimelineFilter === 'all') return true;
+      return e.type === selectedTimelineFilter;
+    });
+
+    if (!events.length) {
+      container.innerHTML = '<p class="empty-state">Nenhum evento neste filtro ainda. Sua jornada está só começando.</p>';
+      $('#timeline-detail')?.classList.add('hidden');
+      return;
+    }
+
+    if (selectedTimelineId && !events.find((e) => e.id === selectedTimelineId)) {
+      selectedTimelineId = null;
+    }
+
+    container.innerHTML = events.slice(0, 40).map((e) => `
+      <div class="itl-item type-${e.type}${e.id === selectedTimelineId ? ' selected' : ''}" data-id="${e.id}" role="button" tabindex="0" aria-pressed="${e.id === selectedTimelineId}">
+        <div class="itl-dot"></div>
+        <div class="itl-when">${formatTimelineWhen(e.at)}</div>
+        <div class="itl-title">${e.icon} ${e.title}</div>
+        <div class="itl-desc">${e.desc}</div>
+      </div>
+    `).join('');
+
+    container.querySelectorAll('.itl-item').forEach((item) => {
+      const id = item.dataset.id;
+      const event = events.find((e) => e.id === id);
+      const select = () => {
+        selectedTimelineId = id;
+        container.querySelectorAll('.itl-item').forEach((el) => {
+          const on = el.dataset.id === id;
+          el.classList.toggle('selected', on);
+          el.setAttribute('aria-pressed', on);
+        });
+        showTimelineDetail(event);
+        haptic(8);
+      };
+      item.addEventListener('click', select);
+      item.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter' || ev.key === ' ') {
+          ev.preventDefault();
+          select();
+        }
+      });
+    });
+
+    if (selectedTimelineId) {
+      const selected = events.find((e) => e.id === selectedTimelineId);
+      if (selected) showTimelineDetail(selected);
+    }
+  }
+
+  function renderDashboard() {
+    renderMotivation();
+    renderDashboardPills();
+    renderPeakHours();
+    renderInteractiveTimeline();
+  }
+
   function renderAll() {
     renderStats();
     renderQuitSince();
@@ -960,6 +1307,7 @@
     renderFuture();
     renderTriggerMap();
     renderLifetime();
+    renderDashboard();
     updateLiberationVisual();
   }
 

@@ -117,30 +117,74 @@
       <button id="alert-banner-close" class="alert-banner-close" type="button" aria-label="Fechar">&times;</button>
     </div>
 
-    <!-- Tab: Início -->
+    <!-- Tab: Painel (Dashboard) -->
     <div id="tab-home" class="tab-panel active" role="tabpanel">
-      <section class="hero-card glass">
-        <div class="progress-ring-wrap">
-          <svg class="progress-ring" viewBox="0 0 120 120" aria-hidden="true">
-            <circle class="progress-ring-bg" cx="60" cy="60" r="52"/>
-            <circle id="main-progress-ring" class="progress-ring-fill" cx="60" cy="60" r="52"/>
-          </svg>
-          <div class="progress-ring-center">
-            <span id="progress-percent" class="progress-percent">0%</span>
-            <small>recuperação</small>
+      <section class="motivation-card glass">
+        <div class="motivation-header">
+          <span class="motivation-icon" aria-hidden="true">✦</span>
+          <p class="motivation-label">Para você hoje</p>
+        </div>
+        <p id="motivation-text" class="motivation-text"></p>
+        <button id="btn-new-motivation" class="btn-motivation" type="button">Outra mensagem</button>
+      </section>
+
+      <section class="dashboard-hero glass">
+        <div class="dashboard-hero-top">
+          <div class="progress-ring-wrap progress-ring-sm">
+            <svg class="progress-ring" viewBox="0 0 120 120" aria-hidden="true">
+              <circle class="progress-ring-bg" cx="60" cy="60" r="52"/>
+              <circle id="main-progress-ring" class="progress-ring-fill" cx="60" cy="60" r="52"/>
+            </svg>
+            <div class="progress-ring-center">
+              <span id="progress-percent" class="progress-percent">0%</span>
+              <small>recuperação</small>
+            </div>
+          </div>
+          <div class="dashboard-hero-stats">
+            <p class="hero-label">Livre de pods há</p>
+            <div id="time-display" class="time-display time-display-compact">
+              <div class="time-unit"><span id="days">0</span><small>dias</small></div>
+              <div class="time-sep">:</div>
+              <div class="time-unit"><span id="hours">00</span><small>h</small></div>
+              <div class="time-sep">:</div>
+              <div class="time-unit"><span id="minutes">00</span><small>min</small></div>
+              <div class="time-sep">:</div>
+              <div class="time-unit"><span id="seconds">00</span><small>seg</small></div>
+            </div>
+            <p id="quit-since" class="quit-since"></p>
           </div>
         </div>
-        <p class="hero-label">Livre de pods há</p>
-        <div id="time-display" class="time-display">
-          <div class="time-unit"><span id="days">0</span><small>dias</small></div>
-          <div class="time-sep">:</div>
-          <div class="time-unit"><span id="hours">00</span><small>h</small></div>
-          <div class="time-sep">:</div>
-          <div class="time-unit"><span id="minutes">00</span><small>min</small></div>
-          <div class="time-sep">:</div>
-          <div class="time-unit"><span id="seconds">00</span><small>seg</small></div>
+        <div id="dashboard-pills" class="dashboard-pills"></div>
+      </section>
+
+      <div class="stats-grid stats-grid-dashboard">
+        <div class="stat-card glass stat-card-dash"><span class="stat-icon">💰</span><span id="money-saved" class="stat-value">R$ 0</span><span class="stat-label">economizados</span></div>
+        <div class="stat-card glass stat-card-dash"><span class="stat-icon">🧪</span><span id="nicotine-avoided" class="stat-value">0 mg</span><span class="stat-label">nicotina evitada</span></div>
+        <div class="stat-card glass stat-card-dash"><span class="stat-icon">📦</span><span id="pods-avoided" class="stat-value">0</span><span class="stat-label">pods evitados</span></div>
+        <div class="stat-card glass stat-card-dash"><span class="stat-icon">🔥</span><span id="cravings-resisted" class="stat-value">0</span><span class="stat-label">fissuras soltas</span></div>
+      </div>
+
+      <section class="peak-hours-card glass">
+        <div class="section-header-row">
+          <h2 class="section-title">Horários de pico</h2>
+          <span id="peak-hour-badge" class="peak-badge hidden"></span>
         </div>
-        <p id="quit-since" class="quit-since"></p>
+        <p class="section-desc">Quando suas fissuras costumam bater — use isso para se preparar.</p>
+        <div id="peak-hours-chart" class="peak-hours-chart" aria-label="Gráfico de fissuras por hora do dia"></div>
+        <p id="peak-hours-insight" class="peak-insight"></p>
+      </section>
+
+      <section class="interactive-timeline-section glass">
+        <h2 class="section-title">Linha do tempo</h2>
+        <p class="section-desc">Toque em um evento para ver detalhes da sua jornada.</p>
+        <div class="timeline-filters" role="tablist" aria-label="Filtrar linha do tempo">
+          <button class="timeline-filter active" data-filter="all" type="button" role="tab" aria-selected="true">Tudo</button>
+          <button class="timeline-filter" data-filter="craving" type="button" role="tab">Fissuras</button>
+          <button class="timeline-filter" data-filter="milestone" type="button" role="tab">Marcos</button>
+          <button class="timeline-filter" data-filter="relapse" type="button" role="tab">Recaídas</button>
+        </div>
+        <div id="interactive-timeline" class="interactive-timeline"></div>
+        <div id="timeline-detail" class="timeline-detail hidden" role="region" aria-live="polite"></div>
       </section>
 
       <section class="checkin-card glass">
@@ -153,13 +197,6 @@
         </div>
         <p id="checkin-message" class="checkin-message"></p>
       </section>
-
-      <div class="stats-grid">
-        <div class="stat-card glass"><span class="stat-icon">💰</span><span id="money-saved" class="stat-value">R$ 0</span><span class="stat-label">economizados</span></div>
-        <div class="stat-card glass"><span class="stat-icon">🧪</span><span id="nicotine-avoided" class="stat-value">0 mg</span><span class="stat-label">nicotina evitada</span></div>
-        <div class="stat-card glass"><span class="stat-icon">📦</span><span id="pods-avoided" class="stat-value">0</span><span class="stat-label">pods evitados</span></div>
-        <div class="stat-card glass"><span class="stat-icon">🔥</span><span id="cravings-resisted" class="stat-value">0</span><span class="stat-label">fissuras vencidas</span></div>
-      </div>
 
       <section id="next-milestone-card" class="next-milestone-card glass hidden">
         <p class="next-milestone-label">Próximo marco</p>
@@ -316,7 +353,7 @@
     <nav class="bottom-nav" aria-label="Navegação principal">
       <button class="nav-item active" data-tab="home" type="button" aria-current="page">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>
-        <span>Início</span>
+        <span>Painel</span>
       </button>
       <button class="nav-item" data-tab="cravings" type="button">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
