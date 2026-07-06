@@ -382,6 +382,68 @@
     if (navigator.vibrate) navigator.vibrate(pattern);
   }
 
+  function prefersReducedMotion() {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  function spawnRipple(e, el) {
+    if (prefersReducedMotion() || !el) return;
+    if (!el.classList.contains('ripple-host')) el.classList.add('ripple-host');
+    const rect = el.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height) * 1.2;
+    const ripple = document.createElement('span');
+    ripple.className = 'ripple';
+    ripple.style.width = ripple.style.height = `${size}px`;
+    ripple.style.left = `${e.clientX - rect.left - size / 2}px`;
+    ripple.style.top = `${e.clientY - rect.top - size / 2}px`;
+    el.appendChild(ripple);
+    ripple.addEventListener('animationend', () => ripple.remove(), { once: true });
+  }
+
+  function bumpStat(el, text) {
+    if (!el) return;
+    if (el.textContent !== text) {
+      el.textContent = text;
+      el.classList.remove('stat-bump');
+      void el.offsetWidth;
+      el.classList.add('stat-bump');
+    }
+  }
+
+  const TAB_ORDER = ['home', 'cravings', 'progress', 'future'];
+
+  function updateNavIndicator(tab) {
+    const ind = $('#nav-indicator');
+    if (!ind) return;
+    const idx = Math.max(0, TAB_ORDER.indexOf(tab));
+    ind.style.setProperty('--nav-index', idx);
+  }
+
+  function updateTimelineFilterTrack() {
+    const track = $('#timeline-filter-track');
+    const active = $('.timeline-filter.active');
+    const container = $('.timeline-filters');
+    if (!track || !active || !container) return;
+    const cRect = container.getBoundingClientRect();
+    const aRect = active.getBoundingClientRect();
+    track.style.width = `${aRect.width}px`;
+    track.style.transform = `translateX(${aRect.left - cRect.left}px)`;
+  }
+
+  function playTabEnter(panel) {
+    if (!panel || prefersReducedMotion()) return;
+    panel.classList.add('tab-entering');
+    setTimeout(() => panel.classList.remove('tab-entering'), 600);
+  }
+
+  function bindRipples() {
+    const selector = '.btn, .nav-item, .timeline-filter, .mood-btn, .fab-craving, .btn-motivation, .header-btn, .stat-card-dash, .header-brand';
+    document.addEventListener('pointerdown', (e) => {
+      const el = e.target.closest(selector);
+      if (el) spawnRipple(e, el);
+    });
+  }
+
   function showToast(message) {
     const toast = $('#toast');
     toast.textContent = message;
@@ -481,8 +543,13 @@
       showSetup();
     }
     bindEvents();
+    bindRipples();
     initHeaderScroll();
     initTriggerChips();
+    window.addEventListener('resize', () => {
+      updateTimelineFilterTrack();
+      updateNavIndicator(activeTab);
+    }, { passive: true });
   }
 
   function showSetup() {
@@ -497,33 +564,60 @@
   function showApp() {
     setupScreen.classList.add('hidden');
     appScreen.classList.remove('hidden');
-    switchTab('home');
+    activeTab = 'home';
+    $$('.tab-panel').forEach((panel) => {
+      const isActive = panel.id === 'tab-home';
+      panel.classList.toggle('active', isActive);
+      panel.hidden = !isActive;
+    });
+    updateNavIndicator('home');
     renderAll();
+    playTabEnter($('#tab-home'));
     startTimer();
     startAlertChecker();
   }
 
   function switchTab(tab) {
-    activeTab = tab;
-    $$('.tab-panel').forEach((panel) => {
-      const isActive = panel.id === `tab-${tab}`;
-      panel.classList.toggle('active', isActive);
-      panel.hidden = !isActive;
-    });
-    $$('.nav-item').forEach((btn) => {
-      const isActive = btn.dataset.tab === tab;
-      btn.classList.toggle('active', isActive);
-      btn.setAttribute('aria-current', isActive ? 'page' : null);
-    });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    updateHeader(tab);
-    haptic(8);
-    if (tab === 'future') renderFuture();
-    if (tab === 'progress') renderLifetime();
-    if (tab === 'home') renderDashboard();
-    if (tab === 'cravings') {
-      renderDailyCravings();
-      renderTriggerMap();
+    if (tab === activeTab) return;
+
+    const prevTab = activeTab;
+    const currentPanel = $(`#tab-${prevTab}`);
+    const nextPanel = $(`#tab-${tab}`);
+
+    const applySwitch = () => {
+      activeTab = tab;
+      $$('.tab-panel').forEach((panel) => {
+        const isActive = panel.id === `tab-${tab}`;
+        panel.classList.toggle('active', isActive);
+        panel.hidden = !isActive;
+      });
+      $$('.nav-item').forEach((btn) => {
+        const isActive = btn.dataset.tab === tab;
+        btn.classList.toggle('active', isActive);
+        btn.setAttribute('aria-current', isActive ? 'page' : null);
+      });
+      updateNavIndicator(tab);
+      window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+      updateHeader(tab);
+      haptic(8);
+      playTabEnter(nextPanel);
+      if (tab === 'future') renderFuture();
+      if (tab === 'progress') renderLifetime();
+      if (tab === 'home') renderDashboard();
+      if (tab === 'cravings') {
+        renderDailyCravings();
+        renderTriggerMap();
+      }
+    };
+
+    if (!prefersReducedMotion() && currentPanel && nextPanel) {
+      currentPanel.classList.add('tab-leaving');
+      setTimeout(() => {
+        currentPanel.classList.remove('tab-leaving');
+        applySwitch();
+      }, 200);
+    } else {
+      applySwitch();
     }
   }
 
@@ -595,6 +689,7 @@
           b.setAttribute('aria-selected', on);
         });
         renderInteractiveTimeline();
+        updateTimelineFilterTrack();
         haptic(8);
       });
     });
@@ -670,7 +765,16 @@
     data.moods[dateKey(new Date())] = mood;
     saveData();
     $$('.mood-btn').forEach((btn) => btn.classList.toggle('selected', btn.dataset.mood === mood));
-    $('#checkin-message').textContent = MOOD_MESSAGES[mood];
+    const msgEl = $('#checkin-message');
+    if (msgEl && !prefersReducedMotion()) {
+      msgEl.classList.add('is-changing');
+      setTimeout(() => {
+        msgEl.textContent = MOOD_MESSAGES[mood];
+        msgEl.classList.remove('is-changing');
+      }, 180);
+    } else if (msgEl) {
+      msgEl.textContent = MOOD_MESSAGES[mood];
+    }
     motivationIndex = null;
     renderMotivation();
     renderDashboardPills();
@@ -962,14 +1066,33 @@
 
   function updateTimer() {
     const totalSec = Math.floor(getElapsed() / 1000);
-    $('#days').textContent = Math.floor(totalSec / 86400);
-    $('#hours').textContent = String(Math.floor((totalSec % 86400) / 3600)).padStart(2, '0');
-    $('#minutes').textContent = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
-    $('#seconds').textContent = String(totalSec % 60).padStart(2, '0');
+    const days = Math.floor(totalSec / 86400);
+    const hours = String(Math.floor((totalSec % 86400) / 3600)).padStart(2, '0');
+    const minutes = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+    const seconds = String(totalSec % 60).padStart(2, '0');
+
+    const daysEl = $('#days');
+    const hoursEl = $('#hours');
+    const minutesEl = $('#minutes');
+    const secondsEl = $('#seconds');
+
+    if (daysEl && daysEl.textContent !== String(days)) daysEl.textContent = days;
+    if (hoursEl && hoursEl.textContent !== hours) hoursEl.textContent = hours;
+    if (minutesEl && minutesEl.textContent !== minutes) minutesEl.textContent = minutes;
+    if (secondsEl && secondsEl.textContent !== seconds) {
+      secondsEl.textContent = seconds;
+      if (!prefersReducedMotion()) {
+        secondsEl.classList.remove('tick');
+        void secondsEl.offsetWidth;
+        secondsEl.classList.add('tick');
+      }
+    }
+
     renderHeaderStat();
 
     const pct = Math.min(100, Math.round((getElapsedHours() / GOAL_HOURS) * 100));
-    $('#progress-percent').textContent = pct + '%';
+    const pctEl = $('#progress-percent');
+    if (pctEl) pctEl.textContent = pct + '%';
     const ring = $('#main-progress-ring');
     if (ring) ring.style.strokeDashoffset = RING_CIRC * (1 - pct / 100);
     updateLiberationVisual();
@@ -998,10 +1121,22 @@
     container.innerHTML = entries.map((t) => `
       <div class="trigger-bar-row">
         <span class="trigger-bar-label"><span>${t.icon}</span>${t.label}</span>
-        <div class="trigger-bar-track"><div class="trigger-bar-fill" style="width:${(t.count / max) * 100}%"></div></div>
+        <div class="trigger-bar-track"><div class="trigger-bar-fill" data-w="${(t.count / max) * 100}" style="width:0"></div></div>
         <span class="trigger-bar-count">${t.count}</span>
       </div>
     `).join('');
+
+    if (!prefersReducedMotion()) {
+      requestAnimationFrame(() => {
+        container.querySelectorAll('.trigger-bar-fill').forEach((fill) => {
+          fill.style.width = fill.dataset.w + '%';
+        });
+      });
+    } else {
+      container.querySelectorAll('.trigger-bar-fill').forEach((fill) => {
+        fill.style.width = fill.dataset.w + '%';
+      });
+    }
   }
 
   function getPeakHourInfo() {
@@ -1042,7 +1177,19 @@
       motivationIndex = pool[new Date().getDate() % pool.length];
     }
 
-    el.textContent = MOTIVATIONAL_MESSAGES[motivationIndex];
+    const text = MOTIVATIONAL_MESSAGES[motivationIndex];
+
+    if (forceNew && !prefersReducedMotion()) {
+      el.classList.add('is-exiting');
+      setTimeout(() => {
+        el.textContent = text;
+        el.classList.remove('is-exiting');
+        el.classList.add('is-entering');
+        setTimeout(() => el.classList.remove('is-entering'), 450);
+      }, 200);
+    } else {
+      el.textContent = text;
+    }
   }
 
   function renderDashboardPills() {
@@ -1093,12 +1240,14 @@
     if (!hasData) {
       chart.innerHTML = '';
       insight.textContent = 'Registre fissuras com o botão Soltar para descobrir em quais horários elas costumam bater.';
+      insight.classList.remove('is-updating');
       if (badge) badge.classList.add('hidden');
       return;
     }
 
     const nowHour = new Date().getHours();
     const majorHours = [0, 6, 12, 18];
+    const animate = !prefersReducedMotion();
 
     chart.innerHTML = hours.map((count, h) => {
       const pct = Math.max(8, (count / max) * 100);
@@ -1108,10 +1257,29 @@
       if (count > 0) cls += ' has-data';
       if (isPeak) cls += ' peak';
       else if (isHigh) cls += ' peak-high';
+      if (animate) cls += ' bar-grow';
       const labelCls = majorHours.includes(h) ? 'peak-hour-label major' : 'peak-hour-label';
       const showLabel = majorHours.includes(h) ? String(h) : '';
-      return `<div class="peak-hour-bar-wrap" title="${h}h: ${count} fissura${count !== 1 ? 's' : ''}"><div class="${cls}" style="height:${pct}%"></div><span class="${labelCls}">${showLabel}</span></div>`;
+      const wrapCls = h === nowHour ? 'peak-hour-bar-wrap is-now' : 'peak-hour-bar-wrap';
+      const barStyle = animate ? `--h:${pct}%` : `height:${pct}%`;
+      return `<div class="${wrapCls}" data-hour="${h}" style="--i:${h}" title="${h}h: ${count} fissura${count !== 1 ? 's' : ''}"><div class="${cls}" style="${barStyle}"></div><span class="${labelCls}">${showLabel}</span></div>`;
     }).join('');
+
+    chart.querySelectorAll('.peak-hour-bar-wrap').forEach((wrap) => {
+      wrap.addEventListener('click', () => {
+        const h = parseInt(wrap.dataset.hour, 10);
+        const count = hours[h];
+        chart.querySelectorAll('.peak-hour-bar-wrap').forEach((w) => w.classList.toggle('is-active', w === wrap));
+        insight.classList.add('is-updating');
+        setTimeout(() => {
+          insight.textContent = count > 0
+            ? `${String(h).padStart(2, '0')}h — ${count} fissura${count !== 1 ? 's' : ''} registrada${count !== 1 ? 's' : ''} neste horário.`
+            : `${String(h).padStart(2, '0')}h — nenhuma fissura registrada ainda. Um bom horário para estar tranquilo.`;
+          insight.classList.remove('is-updating');
+        }, prefersReducedMotion() ? 0 : 150);
+        haptic(6);
+      });
+    });
 
     if (badge) {
       badge.classList.remove('hidden');
@@ -1217,6 +1385,9 @@
     const panel = $('#timeline-detail');
     if (!panel || !event) return;
     panel.classList.remove('hidden');
+    panel.style.animation = 'none';
+    void panel.offsetWidth;
+    panel.style.animation = '';
     panel.innerHTML = `
       <div class="timeline-detail-icon">${event.icon}</div>
       <div class="timeline-detail-title">${event.title}</div>
@@ -1244,8 +1415,8 @@
       selectedTimelineId = null;
     }
 
-    container.innerHTML = events.slice(0, 40).map((e) => `
-      <div class="itl-item type-${e.type}${e.id === selectedTimelineId ? ' selected' : ''}" data-id="${e.id}" role="button" tabindex="0" aria-pressed="${e.id === selectedTimelineId}">
+    container.innerHTML = events.slice(0, 40).map((e, i) => `
+      <div class="itl-item type-${e.type}${e.id === selectedTimelineId ? ' selected' : ''}" data-id="${e.id}" style="--i:${i}" role="button" tabindex="0" aria-pressed="${e.id === selectedTimelineId}">
         <div class="itl-dot"></div>
         <div class="itl-when">${formatTimelineWhen(e.at)}</div>
         <div class="itl-title">${e.icon} ${e.title}</div>
@@ -1286,6 +1457,7 @@
     renderDashboardPills();
     renderPeakHours();
     renderInteractiveTimeline();
+    updateTimelineFilterTrack();
   }
 
   function renderAll() {
@@ -1332,10 +1504,10 @@
   function renderStats() {
     const days = getElapsedHours() / 24;
     const pods = getPodsAvoided(days);
-    $('#money-saved').textContent = formatMoney(pods * data.podCost);
-    $('#nicotine-avoided').textContent = formatNicotine(pods * data.nicotineMg);
-    $('#pods-avoided').textContent = pods >= 10 ? Math.round(pods) : pods.toFixed(1);
-    $('#cravings-resisted').textContent = data.cravingsResisted;
+    bumpStat($('#money-saved'), formatMoney(pods * data.podCost));
+    bumpStat($('#nicotine-avoided'), formatNicotine(pods * data.nicotineMg));
+    bumpStat($('#pods-avoided'), pods >= 10 ? String(Math.round(pods)) : pods.toFixed(1));
+    bumpStat($('#cravings-resisted'), String(data.cravingsResisted));
   }
 
   function formatMoney(val) {
@@ -1539,10 +1711,13 @@
     const max = Math.max(...days.map((d) => d.count), 1);
     const todayKey = dateKey(new Date());
     const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-    $('#weekly-chart').innerHTML = days.map((d) => {
+    const animate = !prefersReducedMotion();
+    $('#weekly-chart').innerHTML = days.map((d, i) => {
       const h = Math.max(8, (d.count / max) * 80);
       const isToday = d.key === todayKey;
-      return `<div class="chart-bar-wrap"><span class="chart-value">${d.count}</span><div class="chart-bar${isToday ? ' today' : ''}" style="height:${h}px"></div><span class="chart-label">${dayNames[d.date.getDay()]}</span></div>`;
+      const barCls = `chart-bar${isToday ? ' today' : ''}${animate ? ' bar-grow' : ''}`;
+      const barStyle = animate ? `--h:${h}px;--i:${i}` : `height:${h}px`;
+      return `<div class="chart-bar-wrap"><span class="chart-value">${d.count}</span><div class="${barCls}" style="${barStyle}"></div><span class="chart-label">${dayNames[d.date.getDay()]}</span></div>`;
     }).join('');
   }
 
