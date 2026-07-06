@@ -185,7 +185,7 @@
     { icon: '🦷', title: 'Escovar os dentes', desc: 'Menta + boca ocupada. Muda o ambiente do impulso.', action: 'tip' },
     { icon: '📱', title: 'Mandar mensagem', desc: '"Tô com fissura" pra alguém de confiança. Não precisa explicar.', action: 'tip' },
     { icon: '✦', title: 'Fluxo Soltar', desc: 'Os 3 passos guiados completos: água, respiração e movimento.', action: 'full' },
-    { icon: '💬', title: 'Conversar', desc: 'Alguém pra ouvir agora — sem julgamento, sem pressa.', action: 'ai' },
+    { icon: '💬', title: 'FissuAI', desc: 'Conversa com a FissuAI — sem julgamento, sem pressa.', action: 'ai' },
   ];
 
   const AI_QUICK_CHIPS = [
@@ -805,6 +805,7 @@
     setupScreen.classList.remove('hidden');
     appScreen.classList.add('hidden');
     $('#btn-craving')?.classList.add('hidden');
+    $('#btn-fissuai')?.classList.add('hidden');
     const now = new Date();
     const input = $('#quit-datetime');
     input.value = toDatetimeLocal(now);
@@ -815,6 +816,7 @@
     setupScreen.classList.add('hidden');
     appScreen.classList.remove('hidden');
     $('#btn-craving')?.classList.remove('hidden');
+    $('#btn-fissuai')?.classList.remove('hidden');
     activeTab = 'home';
     $$('.tab-panel').forEach((panel) => {
       const isActive = panel.id === 'tab-home';
@@ -959,6 +961,7 @@
     $('#btn-settings').addEventListener('click', openSettings);
     $('#btn-craving').addEventListener('click', openCravingModal);
     $('#btn-craving-desktop').addEventListener('click', openCravingModal);
+    $('#btn-fissuai')?.addEventListener('click', openAiChatModal);
     $('#btn-resisted').addEventListener('click', resistCraving);
     $('#btn-step-next').addEventListener('click', advanceCravingStep);
     $('#btn-save-trigger').addEventListener('click', saveTrigger);
@@ -1094,6 +1097,7 @@
       if (timerInterval) clearInterval(timerInterval);
       if (alertInterval) clearInterval(alertInterval);
       $('#btn-craving')?.classList.add('hidden');
+      $('#btn-fissuai')?.classList.add('hidden');
       showSetup();
     }
   }
@@ -1543,13 +1547,13 @@
     let welcome;
 
     if (days === 0 && hours < 6) {
-      welcome = 'Ei. Sei que as primeiras horas são um absurdo — o corpo não entendeu ainda que o pod acabou. Tô aqui. O que tá batendo mais forte aí?';
+      welcome = 'Oi, sou a FissuAI. Sei que as primeiras horas são um absurdo — o corpo ainda não entendeu que o pod acabou. Tô aqui. O que tá batendo mais forte aí?';
     } else if (days < 3) {
-      welcome = `Dia ${days + 1} sem pod — e ainda assim a cabeça puxa. Normal. Não precisa ser herói, só passar o próximo pedaço. Como você tá agora?`;
+      welcome = `Oi, FissuAI aqui. Dia ${days + 1} sem pod — e a cabeça ainda puxa. Normal. Não precisa ser herói, só passar o próximo pedaço. Como você tá?`;
     } else if (ctx.mood === 'difícil') {
-      welcome = 'Vi que hoje tá pesado. Faz sentido a fissura bater mais forte. Me conta o que tá acontecendo — sem filtro.';
+      welcome = 'Oi, sou a FissuAI. Vi que hoje tá pesado — faz sentido a fissura bater mais forte. Me conta o que tá acontecendo, sem filtro.';
     } else {
-      welcome = 'Oi. Tô aqui, sem pressa. A vontade de pod é uma onda — sobe, desce. O que trouxe você aqui agora?';
+      welcome = 'Oi, eu sou a FissuAI. Tô aqui, sem pressa. A vontade de pod é uma onda — sobe, desce. O que trouxe você aqui agora?';
     }
 
     appendAiMessage('assistant', welcome);

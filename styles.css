@@ -2221,11 +2221,93 @@ body.modal-open { overflow: hidden; position: fixed; width: 100%; }
 }
 
 body.modal-open .fab-craving,
-body.celebrating .fab-craving {
+body.modal-open .fab-fissuai,
+body.celebrating .fab-craving,
+body.celebrating .fab-fissuai {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
   transform: scale(0.9);
+}
+
+/* ── FAB FissuAI ── */
+.fab-fissuai {
+  position: fixed;
+  right: 16px;
+  bottom: calc(var(--nav-height) + var(--safe-bottom) + var(--fab-height) + 20px);
+  z-index: 44;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px 0 12px;
+  height: 48px;
+  background: linear-gradient(135deg, var(--accent), #2dd4bf);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  color: #0f1419;
+  font-family: var(--font);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 20px var(--accent-glow);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  animation: fissuaiPulse 3s ease-in-out infinite;
+  transition: transform 0.2s var(--ease-spring), box-shadow 0.2s ease, opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.fab-fissuai-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.fab-fissuai-label {
+  line-height: 1;
+  pointer-events: none;
+  letter-spacing: -0.01em;
+}
+
+@keyframes fissuaiPulse {
+  0%, 100% { box-shadow: 0 4px 18px var(--accent-glow); }
+  50% { box-shadow: 0 6px 26px rgba(94, 234, 212, 0.55); }
+}
+
+.fab-fissuai:active {
+  transform: scale(0.94);
+}
+
+.fissuai-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.fissuai-avatar {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  background: linear-gradient(135deg, var(--accent), #2dd4bf);
+  color: #0f1419;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px var(--accent-glow);
+}
+
+.fissuai-tagline {
+  font-size: 0.72rem;
+  color: var(--accent);
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.ai-chat-header .modal-subtitle {
+  margin-bottom: 0;
 }
 
 /* ── Bottom nav ── */
@@ -2871,6 +2953,10 @@ body.celebrating .fab-craving {
   .screen { padding-top: 32px; padding-bottom: 48px; }
   #app.screen { padding-bottom: 48px; }
   .fab-craving, .bottom-nav { display: none; }
+  .fab-fissuai {
+    bottom: calc(var(--safe-bottom) + 24px);
+    right: 24px;
+  }
   .desktop-only { display: block; }
 
   .desktop-tabs {
