@@ -187,6 +187,79 @@
     { icon: '✦', title: 'Fluxo Soltar', desc: 'Os 3 passos guiados completos: água, respiração e movimento.', action: 'full' },
   ];
 
+  const WEEK_PROGRAM = [
+    {
+      day: 1,
+      icon: '⚡',
+      focus: 'Abstinência física',
+      title: 'O corpo percebe',
+      preview: 'As primeiras 24h sem nicotina salina. Tudo parece estranho — e é.',
+      body: 'Seu corpo passou horas ou anos recebendo nicotina de forma rápida e constante. Hoje ela não veio. A cabeça pode interpretar isso como "preciso de um pod", mas na verdade é abstinência — sinal de que a dependência existia de verdade.',
+      tip: 'Beba mais água que o normal hoje. Fissuras vêm em ondas de poucos minutos — não precisa vencer o dia inteiro, só a próxima onda.',
+      action: 'soltar',
+    },
+    {
+      day: 2,
+      icon: '🧠',
+      focus: 'Negociação mental',
+      title: 'A cabeça negocia',
+      preview: 'O cérebro vai tentar convencer você de que "só um não faz mal".',
+      body: 'Hoje a mente costuma ficar mais criativa: "só um puff", "só o de 20mg", "depois do almoço eu paro de novo". Isso não é fraqueza — é o hábito lutando pra sobreviver. Você não precisa ganhar o debate, só não comprar o pod.',
+      tip: 'Quando a negociação começar, nomeie em voz alta: "isso é a fissura falando". Parece bobo, mas tira o pensamento do piloto automático.',
+      action: null,
+    },
+    {
+      day: 3,
+      icon: '🌊',
+      focus: 'O pico',
+      title: 'O dia mais intenso',
+      preview: 'Para muita gente, o terceiro dia é o mais difícil. Você não está sozinho.',
+      body: 'A nicotina salina sai do corpo rápido, mas os receptores ainda estão em choque. Irritação, ansiedade, dificuldade de concentrar — tudo isso pode bater forte hoje. Não significa que vai ser assim para sempre. Significa que você tá no meio da tempestade.',
+      tip: 'Evite álcool e café em excesso hoje, se puder. Use o kit de emergência na aba Fissuras — cada ferramenta existe pra esse momento.',
+      action: 'kit',
+    },
+    {
+      day: 4,
+      icon: '🌤️',
+      focus: 'Depois do pico',
+      title: 'A tempestade passa',
+      preview: 'Se você chegou até aqui, o pior da abstinência física provavelmente já ficou pra trás.',
+      body: 'Muita gente nota uma leveza a partir do quarto dia — não é linear, mas a tendência melhora. A fissura ainda vem, mas costuma ser mais curta e menos física. O desafio agora é mais mental: o hábito de puxar o pod em certos momentos.',
+      tip: 'Observe seus gatilhos hoje sem julgamento. Café? Tédio? Depois de comer? Anotar mentalmente já ajuda a se preparar amanhã.',
+      action: null,
+    },
+    {
+      day: 5,
+      icon: '🎯',
+      focus: 'Gatilhos',
+      title: 'Os gatilhos aparecem',
+      preview: 'A nicotina saiu, mas os hábitos ficaram. Eles ativam em momentos específicos.',
+      body: 'Hoje você pode perceber com mais clareza *quando* a vontade bate: no trânsito, no intervalo do trabalho, na festa, depois da refeição. O pod virou parte da rotina — e rotina demora mais pra mudar que a química.',
+      tip: 'Depois de cada fissura que soltar, registre o gatilho no app. Em uma semana você terá um mapa pessoal do que evitar ou se preparar.',
+      action: 'soltar',
+    },
+    {
+      day: 6,
+      icon: '🔓',
+      focus: 'Automático enfraquecendo',
+      title: 'A mão para de ir sozinha',
+      preview: 'O gesto de buscar o pod no bolso começa a parecer estranho.',
+      body: 'Seis dias sem nicotina e o circuito automático já enfraqueceu. Você ainda pode sentir vontade — mas ela não controla mais o dia inteiro. Cada vez que você não cede, o caminho neural do hábito perde força.',
+      tip: 'Releia seu "porquê" nas configurações ou na carta do eu do futuro. No dia difícil, o motivo pessoal pesa mais que qualquer frase genérica.',
+      action: null,
+    },
+    {
+      day: 7,
+      icon: '🌟',
+      focus: 'Marco real',
+      title: 'Uma semana. De verdade.',
+      preview: 'Sete dias sem pod não é sorte — é trabalho que ninguém viu você fazendo.',
+      body: 'Uma semana livre de nicotina salina é um marco concreto. Seu corpo já se adaptou significativamente. A jornada não acaba aqui — gatilhos vão voltar em semanas ou meses — mas você provou que consegue. Isso não tem preço.',
+      tip: 'Celebre de um jeito que não envolva nicotina: um lanche que você gosta, um passeio, contar pra alguém. Reconhecer a vitória ajuda a fortalecer o hábito novo.',
+      action: null,
+    },
+  ];
+
   const MOTIVATIONAL_MESSAGES = [
     'Os primeiros dias são os piores. Não é impressão sua — é o corpo reclamando.',
     'A cabeça vai inventar mil desculpas pra comprar um pod. A maioria não faz sentido nenhum.',
@@ -290,6 +363,7 @@
     { id: 'money_500', icon: '🏦', title: 'R$ 500+', desc: 'Meio mil reais no bolso', test: (d, h) => (h / 24 / d.daysPerPod) * d.podCost >= 500 },
     { id: 'mood_week', icon: '📊', title: 'Check-in', desc: '7 dias registrando humor', test: (d) => Object.keys(d.moods || {}).length >= 7 },
     { id: 'comeback', icon: '🤍', title: 'Recomeço', desc: 'Voltou com compaixão', test: (d) => (d.lifetime?.relapses || 0) >= 1 },
+    { id: 'program_reader', icon: '📚', title: 'Guia completo', desc: 'Leu os 7 dias do programa', test: (d) => (d.weekProgramRead || []).length >= 7 },
   ];
 
   let data = null;
@@ -379,6 +453,7 @@
     if (!saved.goodbyeLetter) saved.goodbyeLetter = '';
     if (!saved.relapses) saved.relapses = [];
     if (!saved.lifetime) saved.lifetime = { totalDaysFree: 0, relapses: 0 };
+    if (!saved.weekProgramRead) saved.weekProgramRead = [];
     return saved;
   }
 
@@ -663,8 +738,13 @@
       data.alerts.lastDaily = today;
       saveData();
       const msg = DAILY_MESSAGES[Math.floor(Math.random() * DAILY_MESSAGES.length)];
-      showBanner('☀️ ' + msg);
-      sendNotification('NoPods — Bom dia!', msg);
+      const programDay = getWeekProgramDay();
+      const programMsg = programDay <= 7 ? WEEK_PROGRAM[programDay - 1] : null;
+      const body = programMsg
+        ? `Dia ${programDay}: ${programMsg.title}. ${programMsg.tip}`
+        : msg;
+      showBanner('☀️ ' + body);
+      sendNotification('NoPods — Bom dia!', body);
     }
   }
 
@@ -761,7 +841,10 @@
         renderDailyCravings();
         renderTriggerMap();
       }
-      if (tab === 'learn') renderLearn();
+      if (tab === 'learn') {
+        renderLearn();
+        renderWeekProgram();
+      }
     };
 
     if (!prefersReducedMotion() && currentPanel && nextPanel) {
@@ -800,6 +883,7 @@
         moods: {},
         notifiedMilestones: [],
         unlockedAchievements: [],
+        weekProgramRead: [],
       });
       saveData();
       haptic([20, 50, 20]);
@@ -859,6 +943,10 @@
     $('#btn-reset').addEventListener('click', resetApp);
     $('#btn-relapse').addEventListener('click', openRelapseModal);
     $('#btn-relapse-settings').addEventListener('click', () => { closeModal(settingsModal); openRelapseModal(); });
+    $('#btn-week-program-go')?.addEventListener('click', () => {
+      switchTab('learn');
+      setTimeout(() => expandWeekDay(getWeekProgramDay()), 350);
+    });
     $('#btn-learn-relapse')?.addEventListener('click', openRelapseModal);
     $('#btn-share')?.addEventListener('click', openShareModal);
     $('#share-close')?.addEventListener('click', closeShareModal);
@@ -1184,6 +1272,7 @@
 
     data.quitAt = when;
     data.notifiedMilestones = [];
+    data.weekProgramRead = [];
 
     saveData();
     closeRelapseModal();
@@ -1478,6 +1567,11 @@
     const todayMood = data.moods[dateKey(new Date())];
     if (todayMood === 'hard') {
       msgs.push('Dia pesado hoje — não precisa ser perfeito, só não comprar o pod.');
+    }
+
+    if (isInFirstWeek()) {
+      const pd = WEEK_PROGRAM[getWeekProgramDay() - 1];
+      if (pd) msgs.push(`Programa — dia ${pd.day}: ${pd.tip}`);
     }
 
     return msgs;
@@ -1906,6 +2000,7 @@
   function renderDashboard() {
     renderMotivation();
     renderDashboardPills();
+    renderWeekProgramCard();
     renderPeakHours();
     renderMoodCravingChart();
     renderInteractiveTimeline();
@@ -1935,6 +2030,7 @@
     checkAchievements();
     renderDashboard();
     renderLearn();
+    renderWeekProgram();
     renderEmergencyKit();
     updateLiberationVisual();
   }
@@ -2211,7 +2307,173 @@
     el.textContent = `Seu corpo não recebeu ${nic} de nicotina salina desde que parou${podLabel}.`;
   }
 
+  function getWeekProgramDay() {
+    return Math.min(7, Math.floor(getElapsedHours() / 24) + 1);
+  }
+
+  function isInFirstWeek() {
+    return getElapsedHours() < 168;
+  }
+
+  function isProgramDayRead(day) {
+    return (data.weekProgramRead || []).includes(day);
+  }
+
+  function markProgramDayRead(day) {
+    if (!data.weekProgramRead) data.weekProgramRead = [];
+    if (!data.weekProgramRead.includes(day)) {
+      data.weekProgramRead.push(day);
+      saveData();
+      checkAchievements();
+      haptic(12);
+      showToast(`Dia ${day} marcado como lido`);
+    }
+  }
+
+  function renderWeekProgramProgress(el, currentDay) {
+    if (!el) return;
+    const day = Math.min(7, currentDay);
+    el.innerHTML = WEEK_PROGRAM.map((d) => {
+      let cls = 'week-program-progress-seg';
+      if (d.day < day) cls += ' done';
+      else if (d.day === day) cls += ' current';
+      return `<div class="${cls}"></div>`;
+    }).join('');
+    el.setAttribute('aria-valuenow', day);
+    el.setAttribute('aria-valuetext', `Dia ${day} de 7`);
+  }
+
+  function buildWeekDayActions(item) {
+    let html = '<div class="week-day-actions">';
+    if (item.action === 'soltar') {
+      html += '<button type="button" class="btn btn-ghost week-day-action" data-action="soltar">Abrir Soltar</button>';
+    } else if (item.action === 'kit') {
+      html += '<button type="button" class="btn btn-ghost week-day-action" data-action="kit">Ver kit de emergência</button>';
+    }
+    if (isProgramDayRead(item.day)) {
+      html += '<span class="week-day-mark">✓ Dia lido</span>';
+    } else {
+      html += `<button type="button" class="btn btn-primary week-day-action" data-action="read" data-day="${item.day}">Marcar como lido</button>`;
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function expandWeekDay(day) {
+    const card = $(`.week-day-card[data-day="${day}"]`);
+    if (!card) return;
+    $$('.week-day-card').forEach((c) => {
+      c.classList.remove('expanded');
+      c.setAttribute('aria-expanded', 'false');
+      const body = c.querySelector('.week-day-body');
+      if (body) body.hidden = true;
+    });
+    card.classList.add('expanded');
+    card.setAttribute('aria-expanded', 'true');
+    const body = card.querySelector('.week-day-body');
+    if (body) body.hidden = false;
+    card.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'center' });
+  }
+
+  function toggleWeekDay(card) {
+    const expanded = card.getAttribute('aria-expanded') === 'true';
+    const body = card.querySelector('.week-day-body');
+    if (expanded) {
+      card.classList.remove('expanded');
+      card.setAttribute('aria-expanded', 'false');
+      if (body) body.hidden = true;
+    } else {
+      expandWeekDay(parseInt(card.dataset.day, 10));
+    }
+    haptic(6);
+  }
+
+  function renderWeekProgram() {
+    const container = $('#week-program-days');
+    const badge = $('#week-program-badge');
+    const progress = $('#week-program-progress');
+    if (!container) return;
+
+    const currentDay = getWeekProgramDay();
+    if (badge) badge.textContent = isInFirstWeek() ? `Dia ${currentDay}/7` : 'Concluído';
+    renderWeekProgramProgress(progress, isInFirstWeek() ? currentDay : 8);
+
+    container.innerHTML = WEEK_PROGRAM.map((item) => {
+      const read = isProgramDayRead(item.day);
+      let cls = 'week-day-card';
+      if (item.day === currentDay && isInFirstWeek()) cls += ' current';
+      else if (item.day > currentDay && isInFirstWeek()) cls += ' upcoming';
+      if (read) cls += ' read';
+      const expanded = item.day === currentDay && isInFirstWeek();
+      return `
+        <button type="button" class="${cls}${expanded ? ' expanded' : ''}" role="listitem" data-day="${item.day}" aria-expanded="${expanded}">
+          <div class="week-day-header">
+            <span class="week-day-num">${item.day}</span>
+            <div class="week-day-meta">
+              <span class="week-day-focus">${item.focus}</span>
+              <p class="week-day-title">${item.icon} ${item.title}</p>
+              <p class="week-day-preview">${item.preview}</p>
+            </div>
+          </div>
+          <div class="week-day-body" ${expanded ? '' : 'hidden'}>
+            <p class="week-day-text">${item.body}</p>
+            <div class="week-day-tip"><strong>Dica de hoje:</strong> ${item.tip}</div>
+            ${buildWeekDayActions(item)}
+          </div>
+          <span class="week-day-chevron" aria-hidden="true">▼</span>
+        </button>
+      `;
+    }).join('');
+
+    if (!container.dataset.bound) {
+      container.dataset.bound = '1';
+      container.addEventListener('click', (e) => {
+        const readBtn = e.target.closest('[data-action="read"]');
+        if (readBtn) {
+          e.stopPropagation();
+          markProgramDayRead(parseInt(readBtn.dataset.day, 10));
+          renderWeekProgram();
+          renderWeekProgramCard();
+          return;
+        }
+        const actionBtn = e.target.closest('.week-day-action');
+        if (actionBtn) {
+          e.stopPropagation();
+          if (actionBtn.dataset.action === 'soltar') openCravingModal();
+          if (actionBtn.dataset.action === 'kit') switchTab('cravings');
+          return;
+        }
+        const card = e.target.closest('.week-day-card');
+        if (card) toggleWeekDay(card);
+      });
+    }
+  }
+
+  function renderWeekProgramCard() {
+    const card = $('#week-program-card');
+    if (!card) return;
+
+    if (!isInFirstWeek()) {
+      card.classList.add('hidden');
+      return;
+    }
+
+    const day = getWeekProgramDay();
+    const item = WEEK_PROGRAM[day - 1];
+    if (!item) {
+      card.classList.add('hidden');
+      return;
+    }
+
+    card.classList.remove('hidden');
+    $('#week-program-card-icon').textContent = item.icon;
+    $('#week-program-card-title').textContent = `Dia ${day}: ${item.title}`;
+    $('#week-program-card-desc').textContent = item.preview;
+    renderWeekProgramProgress($('#week-program-card-progress'), day);
+  }
+
   function renderLearn() {
+    renderWeekProgram();
     const mythsList = $('#myths-list');
     const restartGuide = $('#restart-guide');
     if (!mythsList || !restartGuide) return;

@@ -136,6 +136,19 @@
         <button id="btn-new-motivation" class="btn-motivation" type="button">Outra mensagem</button>
       </section>
 
+      <section id="week-program-card" class="week-program-card glass hidden">
+        <div class="week-program-card-header">
+          <span id="week-program-card-icon" class="week-program-card-icon" aria-hidden="true">📅</span>
+          <div>
+            <p class="week-program-card-label">Programa da 1ª semana</p>
+            <h3 id="week-program-card-title" class="week-program-card-title"></h3>
+          </div>
+        </div>
+        <p id="week-program-card-desc" class="week-program-card-desc"></p>
+        <div id="week-program-card-progress" class="week-program-progress" aria-hidden="true"></div>
+        <button id="btn-week-program-go" class="btn btn-primary btn-full" type="button">Ler o dia de hoje</button>
+      </section>
+
       <section class="dashboard-hero glass">
         <div class="dashboard-hero-top">
           <div class="progress-ring-wrap progress-ring-sm">
@@ -391,6 +404,16 @@
         <span class="learn-hero-icon" aria-hidden="true">📖</span>
         <h2 class="learn-hero-title">Entenda a jornada</h2>
         <p class="learn-hero-desc">Mitos que a indústria espalha, verdades que ajudam — e como recomeçar sem culpa se tropeçar.</p>
+      </section>
+
+      <section class="learn-section week-program-section">
+        <div class="section-header-row">
+          <h2 class="section-title">Programa da 1ª semana</h2>
+          <span id="week-program-badge" class="peak-badge">Dia 1/7</span>
+        </div>
+        <p class="section-desc">Um guia dia a dia para os primeiros sete dias sem pod — o período mais intenso.</p>
+        <div id="week-program-progress" class="week-program-progress" role="progressbar" aria-valuemin="1" aria-valuemax="7"></div>
+        <div id="week-program-days" class="week-program-days" role="list"></div>
       </section>
 
       <section class="learn-section">
