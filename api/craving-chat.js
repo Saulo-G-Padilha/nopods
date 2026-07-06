@@ -66,7 +66,7 @@ function mapProviderError(status, payload) {
     return { error: 'Sem créditos no provedor de IA. Verifique billing ou use GROQ_API_KEY (grátis).', code: code || 'insufficient_quota' };
   }
   if (status === 404 || code === 'model_not_found') {
-    return { error: 'Modelo não disponível. Ajuste OPENAI_MODEL na Vercel.', code: code || 'model_not_found' };
+    return { error: 'Modelo não disponível. Ajuste GROQ_MODEL ou OPENAI_MODEL na Vercel.', code: code || 'model_not_found' };
   }
   if (code === 'rate_limit_exceeded') {
     return { error: 'Limite de requisições. Espera um minuto.', code };
@@ -103,10 +103,35 @@ async function callChatAPI(baseUrl, apiKey, messages, model, maxTokens = 280) {
   return { ok: response.ok, status: response.status, payload };
 }
 
+function getGroqKey() {
+  return (process.env.GROQ_API_KEY || process.env.GROQ_KEY || '').trim();
+}
+
+function getOpenAIKey() {
+  return (process.env.OPENAI_API_KEY || '').trim();
+}
+
 async function tryProviders(messages) {
   const attempts = [];
-  const openaiKey = process.env.OPENAI_API_KEY?.trim();
-  const groqKey = process.env.GROQ_API_KEY?.trim();
+  const openaiKey = getOpenAIKey();
+  const groqKey = getGroqKey();
+
+  // Groq primeiro — gratuito e é o que a maioria configura
+  if (groqKey) {
+    const groqModels = [
+      (process.env.GROQ_MODEL || '').trim(),
+      'llama-3.3-70b-versatile',
+      'llama-3.1-8b-instant',
+    ].filter(Boolean);
+    const uniqueGroqModels = [...new Set(groqModels)];
+    for (const m of uniqueGroqModels) {
+      attempts.push({
+        provider: 'groq',
+        model: m,
+        result: await callChatAPI('https://api.groq.com/openai', groqKey, messages, m),
+      });
+    }
+  }
 
   if (openaiKey) {
     const model = (process.env.OPENAI_MODEL || 'gpt-4o-mini').trim();
@@ -120,14 +145,7 @@ async function tryProviders(messages) {
     }
   }
 
-  if (groqKey) {
-    const groqModel = (process.env.GROQ_MODEL || 'llama-3.1-8b-instant').trim();
-    attempts.push({
-      provider: 'groq',
-      model: groqModel,
-      result: await callChatAPI('https://api.groq.com/openai', groqKey, messages, groqModel),
-    });
-  }
+  const failures = [];
 
   for (const attempt of attempts) {
     const { ok, status, payload } = attempt.result;
@@ -136,26 +154,31 @@ async function tryProviders(messages) {
       if (reply) return { reply, provider: attempt.provider };
     }
     console.error(`${attempt.provider} error:`, attempt.model, status, JSON.stringify(payload));
-    const mapped = mapProviderError(status, payload);
-    if (status === 401 || mapped.code === 'insufficient_quota') {
-      return { fail: mapped };
+    failures.push(mapProviderError(status, payload));
+    // Continua tentando outros modelos/provedores
+  }
+
+  if (failures.length) {
+    const groqFail = failures.find((f) => f.code === 'invalid_api_key');
+    if (groqFail && groqKey) {
+      return { fail: { error: 'GROQ_API_KEY inválida. Gere uma nova em console.groq.com e redeploy na Vercel.', code: 'invalid_api_key' } };
     }
+    return { fail: failures[failures.length - 1] };
   }
 
-  const last = attempts[attempts.length - 1];
-  if (last) {
-    return { fail: mapProviderError(last.result.status, last.result.payload) };
-  }
-
-  return { fail: { error: 'Nenhuma chave de IA configurada. Adicione OPENAI_API_KEY ou GROQ_API_KEY na Vercel.', code: 'no_keys' } };
+  return { fail: { error: 'IA não configurada. Adicione GROQ_API_KEY (grátis) nas Environment Variables da Vercel e faça Redeploy.', code: 'no_keys' } };
 }
 
 module.exports = async function handler(req, res) {
   if (req.method === 'GET') {
+    const groqKey = getGroqKey();
+    const openaiKey = getOpenAIKey();
     return res.status(200).json({
       ok: true,
-      openai: Boolean(process.env.OPENAI_API_KEY?.trim()),
-      groq: Boolean(process.env.GROQ_API_KEY?.trim()),
+      version: 3,
+      openai: Boolean(openaiKey),
+      groq: Boolean(groqKey),
+      configured: Boolean(groqKey || openaiKey),
     });
   }
 

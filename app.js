@@ -1638,7 +1638,7 @@
       aiChatHistory.push({ role: 'assistant', content: local });
 
       if (json.code === 'no_keys' || json.code === 'insufficient_quota' || json.code === 'invalid_api_key') {
-        appendAiMessage('system', json.error);
+        appendAiMessage('system', json.error || 'Configure GROQ_API_KEY na Vercel e faça Redeploy.');
       }
       haptic(6);
     } catch {
