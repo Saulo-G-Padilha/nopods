@@ -472,7 +472,7 @@
   }
 
   function bindRipples() {
-    const selector = '.btn, .nav-item, .timeline-filter, .mood-btn, .fab-craving, .btn-motivation, .header-btn, .stat-card-dash, .header-brand';
+    const selector = '.btn, .nav-item, .timeline-filter, .mood-btn, .btn-motivation, .header-btn, .stat-card-dash, .header-brand';
     document.addEventListener('pointerdown', (e) => {
       const el = e.target.closest(selector);
       if (el) spawnRipple(e, el);
@@ -612,6 +612,7 @@
   function showSetup() {
     setupScreen.classList.remove('hidden');
     appScreen.classList.add('hidden');
+    $('#btn-craving')?.classList.add('hidden');
     const now = new Date();
     const input = $('#quit-datetime');
     input.value = toDatetimeLocal(now);
@@ -621,6 +622,7 @@
   function showApp() {
     setupScreen.classList.add('hidden');
     appScreen.classList.remove('hidden');
+    $('#btn-craving')?.classList.remove('hidden');
     activeTab = 'home';
     $$('.tab-panel').forEach((panel) => {
       const isActive = panel.id === 'tab-home';
@@ -857,6 +859,7 @@
       data = null;
       if (timerInterval) clearInterval(timerInterval);
       if (alertInterval) clearInterval(alertInterval);
+      $('#btn-craving')?.classList.add('hidden');
       showSetup();
     }
   }
@@ -1150,12 +1153,14 @@
     $('#celebration-title').textContent = title;
     $('#celebration-desc').textContent = desc;
     overlay.classList.remove('hidden');
+    document.body.classList.add('celebrating');
     lockScroll();
   }
 
   function closeCelebration() {
     const overlay = $('#celebration-overlay');
     if (overlay) overlay.classList.add('hidden');
+    document.body.classList.remove('celebrating');
     unlockScroll();
   }
 
