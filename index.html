@@ -499,7 +499,7 @@
       </div>
       <button id="btn-step-next" class="btn btn-primary btn-full" type="button">Próximo passo</button>
       <button id="btn-resisted" class="btn btn-primary btn-full hidden" type="button">Soltou essa fissura ✓</button>
-      <button id="btn-ai-support" class="btn btn-ghost btn-full ai-support-btn" type="button">💬 Preciso conversar agora</button>
+      <button id="btn-ai-support" class="btn btn-ghost btn-full ai-support-btn" type="button">💬 Quero conversar</button>
     </div>
   </div>
 
@@ -510,13 +510,13 @@
       <div class="sheet-handle" aria-hidden="true"></div>
       <button id="ai-chat-close" class="modal-close" type="button" aria-label="Fechar">&times;</button>
       <div class="ai-chat-header">
-        <h2 id="ai-chat-title" class="modal-title-serif">Apoio agora</h2>
-        <p class="modal-subtitle">Conversa rápida pra atravessar a fissura — sem julgamento.</p>
+        <h2 id="ai-chat-title" class="modal-title-serif">Alguém aqui com você</h2>
+        <p class="modal-subtitle">Sem pressa, sem julgamento. Só conversa pra atravessar esse momento.</p>
       </div>
       <div id="ai-chat-messages" class="ai-chat-messages" role="log" aria-live="polite" aria-relevant="additions"></div>
       <div id="ai-chat-chips" class="ai-chat-chips" role="group" aria-label="Respostas rápidas"></div>
       <form id="ai-chat-form" class="ai-chat-form">
-        <input type="text" id="ai-chat-input" class="ai-chat-input" placeholder="O que você tá sentindo?" maxlength="500" autocomplete="off">
+        <input type="text" id="ai-chat-input" class="ai-chat-input" placeholder="Desabafa aqui..." maxlength="500" autocomplete="off">
         <button id="ai-chat-send" class="ai-chat-send" type="submit" aria-label="Enviar">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
         </button>
@@ -584,8 +584,8 @@
       </div>
 
       <div class="settings-group">
-        <h3 class="settings-group-title">💬 Assistente de fissura (IA)</h3>
-        <p class="settings-hint">Conversa de apoio nos momentos difíceis. Configure <strong>GROQ_API_KEY</strong> (grátis em console.groq.com) na Vercel → Settings → Environment Variables → Production → <strong>Redeploy</strong>.</p>
+        <h3 class="settings-group-title">💬 Conversa na fissura</h3>
+        <p class="settings-hint">Alguém pra ouvir nos momentos difíceis — tom humano, foco em autoajuda. Usa Groq (GROQ_API_KEY na Vercel).</p>
         <label class="toggle-row">
           <span>Incluir meu porquê nas conversas</span>
           <input type="checkbox" id="ai-share-reason" class="toggle-input" checked>

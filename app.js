@@ -185,14 +185,15 @@
     { icon: '🦷', title: 'Escovar os dentes', desc: 'Menta + boca ocupada. Muda o ambiente do impulso.', action: 'tip' },
     { icon: '📱', title: 'Mandar mensagem', desc: '"Tô com fissura" pra alguém de confiança. Não precisa explicar.', action: 'tip' },
     { icon: '✦', title: 'Fluxo Soltar', desc: 'Os 3 passos guiados completos: água, respiração e movimento.', action: 'full' },
-    { icon: '💬', title: 'Conversar agora', desc: 'Apoio por IA pra atravessar a fissura — sem julgamento.', action: 'ai' },
+    { icon: '💬', title: 'Conversar', desc: 'Alguém pra ouvir agora — sem julgamento, sem pressa.', action: 'ai' },
   ];
 
   const AI_QUICK_CHIPS = [
-    'A fissura tá muito forte',
-    'Não aguento mais',
-    'Só quero dar um puff',
-    'Me ajuda a esperar 5 min',
+    'Tá muito forte agora',
+    'Não sei se aguento',
+    'Minha cabeça só quer um puff',
+    'Me ajuda a passar esses 5 min',
+    'Tô ansioso e sem rumo',
   ];
 
   const WEEK_PROGRAM = [
@@ -1538,12 +1539,19 @@
   function renderAiWelcome() {
     const hours = getElapsedHours();
     const days = Math.floor(hours / 24);
-    let welcome = 'Oi. Tô aqui com você. A fissura é passageira — me conta o que tá acontecendo agora.';
+    const ctx = buildAiContext();
+    let welcome;
+
     if (days === 0 && hours < 6) {
-      welcome = 'Primeiras horas são intensas. Respira comigo — o que você tá sentindo agora?';
+      welcome = 'Ei. Sei que as primeiras horas são um absurdo — o corpo não entendeu ainda que o pod acabou. Tô aqui. O que tá batendo mais forte aí?';
     } else if (days < 3) {
-      welcome = `Dia ${days + 1} sem pod. O corpo ainda tá se adaptando. Me fala como tá.`;
+      welcome = `Dia ${days + 1} sem pod — e ainda assim a cabeça puxa. Normal. Não precisa ser herói, só passar o próximo pedaço. Como você tá agora?`;
+    } else if (ctx.mood === 'difícil') {
+      welcome = 'Vi que hoje tá pesado. Faz sentido a fissura bater mais forte. Me conta o que tá acontecendo — sem filtro.';
+    } else {
+      welcome = 'Oi. Tô aqui, sem pressa. A vontade de pod é uma onda — sobe, desce. O que trouxe você aqui agora?';
     }
+
     appendAiMessage('assistant', welcome);
     aiChatHistory.push({ role: 'assistant', content: welcome });
   }
@@ -1568,33 +1576,36 @@
   function getLocalCravingReply(msg, ctx) {
     const t = msg.toLowerCase();
     const days = ctx.daysFree ?? 0;
-    const reason = ctx.reason ? ` Lembra: você parou porque ${ctx.reason.slice(0, 80)}.` : '';
+    const reasonBit = ctx.reason ? ` Você parou por um motivo real — "${ctx.reason.slice(0, 70)}".` : '';
 
-    if (/não aguento|nao aguento|desistir|impossível|impossivel/.test(t)) {
-      return `Eu sei que tá pesado. Mas você já ficou ${days > 0 ? `${days} dia${days > 1 ? 's' : ''}` : 'algumas horas'} sem — isso prova que consegue mais uns minutos.${reason} Respira fundo. A onda passa.`;
+    if (/não aguento|nao aguento|desistir|impossível|impossivel|não sei se|nao sei se/.test(t)) {
+      return `Olha, eu acredito que tá pesado mesmo — não é drama seu.${days > 0 ? ` Você já ficou ${days} dia${days > 1 ? 's' : ''} sem, e isso não some.` : ''} Que tal só combinar com você mesma: mais 5 minutos sem decidir nada?`;
     }
-    if (/puff|pod|vape|fumar|usar/.test(t)) {
-      return `A cabeça tá negociando. Um pod agora não resolve — só reinicia a abstinência.${reason} Bebe água, espera 5 minutos e me conta se ainda quer igual.`;
+    if (/puff|pod|vape|fumar|usar|comprar/.test(t)) {
+      return `A cabeça tá fazendo aquele truque de "só um". Eu conheço.${reasonBit} Um pod agora não vai resolver o que tá embaixo — só reinicia a conta. Respira. A urgência mente.`;
     }
-    if (/forte|muito|demais|insuport/.test(t)) {
-      return `Fissura forte é sinal de que o hábito tá perdendo força, não de que você é fraco. Segura mais 3 minutos — literalmente conta até 180.${days >= 3 ? ' Você já passou pelo pior da abstinência física.' : ''}`;
+    if (/forte|muito|demais|insuport|explod/.test(t)) {
+      return `Quando bate assim, parece que não tem saída — mas já passou antes, mesmo que você não lembre agora. Coloca a mão no peito, sente a respiração, e conta devagar até 10. Eu espero.`;
     }
-    if (/5 min|esperar|minuto/.test(t)) {
-      return `Boa. Marca 5 minutos agora — sem pod, sem decisão. Só espera. Mãos ocupadas: água, gelo, ou caminhar até a janela. Eu fico aqui.`;
+    if (/5 min|esperar|minuto|passar/.test(t)) {
+      return `Boa. Cinco minutos é um mundo quando a fissura aperta. Senta, pega água, ou só olha pela janela. Não precisa "vencer o dia" — só esses minutos.`;
     }
-    if (/tédio|entediad|sozinho|solidão|solidao/.test(t)) {
-      return `Tédio é gatilho clássico. O pod preenchia um vazio — mas preenchia mal. Liga pra alguém, ou escreve o que tá sentindo agora. 5 minutos de distração real ajudam.`;
+    if (/tédio|entediad|sozinho|solidão|solidao|vazio/.test(t)) {
+      return `Tédio e solidão são gatilhos clássicos — o pod virou companhia rápida. Que tal mandar um "tô mal" pra alguém, ou escrever aqui mesmo o que tá no peito?`;
     }
-    if (/ansied|nervos|pânico|panico|stress|estresse/.test(t)) {
-      return `Ansiedade e nicotina andavam juntas — sem o pod, o corpo ainda não aprendeu outro caminho. 4 segundos inspirando, 7 segurando, 8 expirando. Repete três vezes.`;
+    if (/ansied|nervos|pânico|panico|stress|estresse|aflit/.test(t)) {
+      return `Ansiedade e nicotina andavam de mãos dadas por um tempo. Sem o pod, o corpo ainda tá aprendendo outro jeito. Inspira 4, segura 7, solta 8. De novo. Só isso por agora.`;
+    }
+    if (/culpa|fraco|fraca|falh/.test(t)) {
+      return `Sentir vontade não é falhar — é abstinência, ponto. Você tá fazendo algo difícil que a maioria nem tenta.${reasonBit} O que você diria pra um amigo no seu lugar?`;
     }
     if (days === 0) {
-      return `Primeiras horas são as mais cruéis — não é impressão sua. Cada minuto sem pod é vitória invisível.${reason} O que disparou essa vontade agora?`;
+      return `As primeiras horas são as mais cruéis — seu corpo ainda espera o hit.${reasonBit} O que aconteceu logo antes da vontade bater?`;
     }
     if (days < 3) {
-      return `Dia ${days + 1} sem pod. O corpo ainda reclama, mas já tá se adaptando.${reason} Essa fissura dura minutos — não compra o pod por minutos de desconforto.`;
+      return `Dia ${days + 1}. O corpo ainda reclama, mas já tá mudando por dentro.${reasonBit} O que você pode fazer agora que não seja ir atrás de pod?`;
     }
-    return `Tô aqui com você. A fissura é temporária — já passou antes e vai passar de novo.${reason} O que você pode fazer nos próximos 2 minutos que não seja puxar o pod?`;
+    return `Tô aqui. A fissura é uma onda — não precisa surfar nela, só deixar passar.${reasonBit} Me fala mais: o que tá pegando agora?`;
   }
 
   async function sendAiMessage(text) {
