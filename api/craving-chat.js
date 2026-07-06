@@ -55,7 +55,53 @@ function sanitizeHistory(history) {
     .map((m) => ({ role: m.role, content: m.content.slice(0, 800) }));
 }
 
-export default async function handler(req, res) {
+function mapOpenAIError(status, payload) {
+  const code = payload?.error?.code || payload?.error?.type || '';
+  const msg = payload?.error?.message || '';
+
+  if (status === 401 || code === 'invalid_api_key') {
+    return 'Chave da OpenAI inválida. Verifique OPENAI_API_KEY na Vercel.';
+  }
+  if (status === 429 || code === 'insufficient_quota' || code === 'billing_hard_limit_reached') {
+    return 'Sem créditos na OpenAI. Adicione saldo em platform.openai.com/billing';
+  }
+  if (status === 404 || code === 'model_not_found') {
+    return 'Modelo de IA não disponível nesta conta. Tente outro modelo nas variáveis da Vercel.';
+  }
+  if (code === 'rate_limit_exceeded') {
+    return 'Muitas requisições à OpenAI. Espera um minuto e tenta de novo.';
+  }
+  if (msg && msg.length < 120) return msg;
+  return 'Não consegui responder agora. Tenta de novo em instantes.';
+}
+
+async function callOpenAI(apiKey, messages, model) {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      max_tokens: 280,
+      temperature: 0.75,
+    }),
+  });
+
+  const raw = await response.text();
+  let payload = null;
+  try {
+    payload = raw ? JSON.parse(raw) : null;
+  } catch {
+    payload = null;
+  }
+
+  return { ok: response.ok, status: response.status, payload };
+}
+
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método não permitido.' });
   }
@@ -65,9 +111,9 @@ export default async function handler(req, res) {
     return res.status(429).json({ error: 'Muitas mensagens seguidas. Espera um minuto e tenta de novo.' });
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) {
-    return res.status(503).json({ error: 'Assistente não configurado. O administrador precisa adicionar a chave da API.' });
+    return res.status(503).json({ error: 'Assistente não configurado. Adicione OPENAI_API_KEY na Vercel.' });
   }
 
   const { message, history = [], context = {} } = req.body || {};
@@ -84,35 +130,34 @@ export default async function handler(req, res) {
     { role: 'user', content: message.trim() },
   ];
 
+  const primaryModel = (process.env.OPENAI_MODEL || 'gpt-4o-mini').trim();
+  const fallbackModel = 'gpt-3.5-turbo';
+  const modelsToTry = primaryModel === fallbackModel ? [primaryModel] : [primaryModel, fallbackModel];
+
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-        messages,
-        max_tokens: 280,
-        temperature: 0.75,
-      }),
-    });
+    let lastError = 'Não consegui responder agora. Tenta de novo em instantes.';
 
-    if (!response.ok) {
-      console.error('OpenAI error:', response.status, await response.text());
-      return res.status(502).json({ error: 'Não consegui responder agora. Tenta de novo em instantes.' });
+    for (const model of modelsToTry) {
+      const { ok, status, payload } = await callOpenAI(apiKey, messages, model);
+      if (ok) {
+        const reply = payload?.choices?.[0]?.message?.content?.trim();
+        if (!reply) {
+          lastError = 'Resposta vazia. Tenta de novo.';
+          continue;
+        }
+        return res.status(200).json({ reply });
+      }
+
+      console.error('OpenAI error:', model, status, JSON.stringify(payload));
+      lastError = mapOpenAIError(status, payload);
+
+      // Não adianta tentar outro modelo se for chave ou crédito
+      if (status === 401 || payload?.error?.code === 'insufficient_quota') break;
     }
 
-    const data = await response.json();
-    const reply = data.choices?.[0]?.message?.content?.trim();
-    if (!reply) {
-      return res.status(502).json({ error: 'Resposta vazia. Tenta de novo.' });
-    }
-
-    return res.status(200).json({ reply });
+    return res.status(502).json({ error: lastError });
   } catch (err) {
     console.error('craving-chat error:', err);
     return res.status(500).json({ error: 'Erro interno. Tenta de novo.' });
   }
-}
+};
