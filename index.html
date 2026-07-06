@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0f1419" id="meta-theme">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>NoPods — Pare de usar pods</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="bg-orbs" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+  <div id="dawn-overlay" class="dawn-overlay" aria-hidden="true"></div>
+  <div id="particles" class="particles-layer" aria-hidden="true"></div>
+
+  <!-- Setup -->
+  <section id="setup" class="screen">
+    <div class="setup-top">
+      <button id="btn-theme-setup" class="btn-icon btn-theme-toggle" type="button" aria-label="Alternar tema claro/escuro">
+        <svg class="theme-icon theme-icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        <svg class="theme-icon theme-icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </div>
+    <div class="setup-card">
+      <div class="logo">
+        <span class="logo-icon">◈</span>
+        <h1>NoPods</h1>
+      </div>
+      <p class="tagline">Seu espaço calmo para largar pods e sais de nicotina</p>
+
+      <form id="setup-form" class="setup-form">
+        <div class="field">
+          <label for="quit-datetime">Quando você decidiu parar?</label>
+          <input type="datetime-local" id="quit-datetime" required>
+        </div>
+        <div class="field">
+          <label for="days-per-pod">Duração média de um pod (dias)</label>
+          <input type="number" id="days-per-pod" min="0.5" step="0.5" value="3" inputmode="decimal" required>
+          <span class="hint">Ex: se um pod dura ~3 dias, coloque 3</span>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="pod-cost">Custo por pod (R$)</label>
+            <input type="number" id="pod-cost" min="1" step="0.5" value="35" inputmode="decimal" required>
+          </div>
+          <div class="field">
+            <label for="nicotine-mg">Nicotina por pod (mg)</label>
+            <input type="number" id="nicotine-mg" min="1" step="1" value="50" inputmode="numeric" required>
+          </div>
+        </div>
+        <div class="field">
+          <label for="pod-ml">Volume do pod (ml)</label>
+          <input type="number" id="pod-ml" min="0.5" step="0.1" value="2" inputmode="decimal" required>
+        </div>
+        <div class="field">
+          <label for="reason">Por que você quer parar?</label>
+          <textarea id="reason" rows="3" placeholder="Ex: cansado da dependência, saúde, dinheiro, liberdade..."></textarea>
+        </div>
+
+        <div class="ritual-card">
+          <p class="ritual-label">Ritual de despedida</p>
+          <p class="ritual-intro">Antes de começar, diga adeus ao que o pod representava. Soltar começa com consciência.</p>
+          <div class="field">
+            <label for="goodbye-letter">O que o pod representava para você?</label>
+            <textarea id="goodbye-letter" rows="4" placeholder="Ex: um refúgio no estresse, algo que me controlava, gasto que não percebia, companhia que virou prisão..."></textarea>
+          </div>
+        </div>
+
+        <div class="setup-footer">
+          <button type="submit" class="btn btn-primary btn-full">Começar minha jornada</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- App -->
+  <main id="app" class="screen hidden">
+    <header class="header">
+      <div class="header-inner">
+        <button class="header-brand" type="button" id="header-brand-btn" aria-label="Voltar ao início">
+          <span class="header-logo-mark" aria-hidden="true">◈</span>
+          <span class="header-brand-text">
+            <span class="header-title">NoPods</span>
+            <span id="header-subtitle" class="header-subtitle">Início</span>
+          </span>
+        </button>
+
+        <div id="header-stat" class="header-stat" aria-label="Tempo livre de pods">
+          <span id="header-stat-value" class="header-stat-value">0</span>
+          <span class="header-stat-suffix">d</span>
+        </div>
+
+        <div class="header-toolbar" role="toolbar" aria-label="Ações do app">
+          <button id="btn-theme" class="header-btn" type="button" aria-label="Alternar tema claro/escuro" title="Alternar tema">
+            <svg class="theme-icon theme-icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+            <svg class="theme-icon theme-icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </button>
+          <span class="header-toolbar-sep" aria-hidden="true"></span>
+          <button id="btn-settings" class="header-btn" type="button" aria-label="Configurações" title="Configurações">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Alert banner -->
+    <div id="alert-banner" class="alert-banner hidden" role="alert">
+      <span id="alert-banner-text"></span>
+      <button id="alert-banner-close" class="alert-banner-close" type="button" aria-label="Fechar">&times;</button>
+    </div>
+
+    <!-- Tab: Início -->
+    <div id="tab-home" class="tab-panel active" role="tabpanel">
+      <section class="hero-card glass">
+        <div class="progress-ring-wrap">
+          <svg class="progress-ring" viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="progress-ring-bg" cx="60" cy="60" r="52"/>
+            <circle id="main-progress-ring" class="progress-ring-fill" cx="60" cy="60" r="52"/>
+          </svg>
+          <div class="progress-ring-center">
+            <span id="progress-percent" class="progress-percent">0%</span>
+            <small>recuperação</small>
+          </div>
+        </div>
+        <p class="hero-label">Livre de pods há</p>
+        <div id="time-display" class="time-display">
+          <div class="time-unit"><span id="days">0</span><small>dias</small></div>
+          <div class="time-sep">:</div>
+          <div class="time-unit"><span id="hours">00</span><small>h</small></div>
+          <div class="time-sep">:</div>
+          <div class="time-unit"><span id="minutes">00</span><small>min</small></div>
+          <div class="time-sep">:</div>
+          <div class="time-unit"><span id="seconds">00</span><small>seg</small></div>
+        </div>
+        <p id="quit-since" class="quit-since"></p>
+      </section>
+
+      <section class="checkin-card glass">
+        <p class="checkin-label">Como você está hoje?</p>
+        <div class="mood-picker" role="group" aria-label="Humor de hoje">
+          <button class="mood-btn" data-mood="great" type="button" title="Ótimo">😊</button>
+          <button class="mood-btn" data-mood="ok" type="button" title="Ok">😐</button>
+          <button class="mood-btn" data-mood="hard" type="button" title="Difícil">😔</button>
+          <button class="mood-btn" data-mood="strong" type="button" title="Forte">💪</button>
+        </div>
+        <p id="checkin-message" class="checkin-message"></p>
+      </section>
+
+      <div class="stats-grid">
+        <div class="stat-card glass"><span class="stat-icon">💰</span><span id="money-saved" class="stat-value">R$ 0</span><span class="stat-label">economizados</span></div>
+        <div class="stat-card glass"><span class="stat-icon">🧪</span><span id="nicotine-avoided" class="stat-value">0 mg</span><span class="stat-label">nicotina evitada</span></div>
+        <div class="stat-card glass"><span class="stat-icon">📦</span><span id="pods-avoided" class="stat-value">0</span><span class="stat-label">pods evitados</span></div>
+        <div class="stat-card glass"><span class="stat-icon">🔥</span><span id="cravings-resisted" class="stat-value">0</span><span class="stat-label">fissuras vencidas</span></div>
+      </div>
+
+      <section id="next-milestone-card" class="next-milestone-card glass hidden">
+        <p class="next-milestone-label">Próximo marco</p>
+        <div class="next-milestone-content">
+          <span id="next-milestone-icon" class="next-milestone-icon"></span>
+          <div>
+            <p id="next-milestone-title" class="next-milestone-title"></p>
+            <p id="next-milestone-remaining" class="next-milestone-remaining"></p>
+          </div>
+        </div>
+      </section>
+
+      <section id="reason-card" class="reason-card glass hidden">
+        <p class="reason-label">Seu porquê</p>
+        <p id="reason-text" class="reason-text"></p>
+      </section>
+
+      <section id="goodbye-card" class="goodbye-card glass hidden">
+        <p class="goodbye-label">O que você deixou para trás</p>
+        <p id="goodbye-text" class="goodbye-text"></p>
+      </section>
+
+      <section id="contrast-card" class="contrast-card glass hidden">
+        <div class="contrast-col contrast-before">
+          <p class="contrast-label">Antes</p>
+          <p id="contrast-before" class="contrast-text"></p>
+        </div>
+        <div class="contrast-divider" aria-hidden="true">→</div>
+        <div class="contrast-col contrast-after">
+          <p class="contrast-label">Agora</p>
+          <p id="contrast-after" class="contrast-text"></p>
+        </div>
+      </section>
+
+      <section class="craving-section desktop-only">
+        <button id="btn-craving-desktop" class="btn-craving" type="button">
+          <span class="craving-pulse" aria-hidden="true"></span>
+          <span class="craving-text"><strong>Segure. Respire.</strong><small>3 passos para soltar essa fissura</small></span>
+        </button>
+      </section>
+    </div>
+
+    <!-- Tab: Fissuras -->
+    <div id="tab-cravings" class="tab-panel" role="tabpanel" hidden>
+      <section class="daily-counter-card glass">
+        <p class="daily-counter-label">Fissuras que você soltou hoje</p>
+        <div class="daily-counter-main">
+          <span id="today-cravings" class="daily-counter-number">0</span>
+          <div class="daily-counter-meta">
+            <p id="today-vs-yesterday" class="daily-vs"></p>
+            <p id="daily-average" class="daily-avg"></p>
+          </div>
+        </div>
+        <div class="daily-streak">
+          <span class="streak-icon">🔥</span>
+          <span id="craving-streak" class="streak-text">0 dias registrando vitórias</span>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section-title">Últimos 7 dias</h2>
+        <div id="weekly-chart" class="weekly-chart" aria-label="Gráfico de fissuras dos últimos 7 dias"></div>
+      </section>
+
+      <section class="insight-card glass">
+        <h3 class="insight-title">💡 Insight</h3>
+        <p id="craving-insight" class="insight-text"></p>
+      </section>
+
+      <section class="section">
+        <h2 class="section-title">Mapa de gatilhos</h2>
+        <p class="section-desc">O que costuma disparar suas fissuras — registre após cada vitória.</p>
+        <div id="trigger-map" class="trigger-map"></div>
+      </section>
+
+      <section class="section">
+        <div class="section-header">
+          <h2 class="section-title">Histórico</h2>
+          <span id="craving-count-badge" class="count-badge">0</span>
+        </div>
+        <div id="craving-log" class="craving-log"></div>
+      </section>
+
+      <footer class="footer footer-actions">
+        <button id="btn-relapse" class="btn-text btn-relapse" type="button">Tive uma recaída</button>
+        <button id="btn-reset" class="btn-text" type="button">Reconfigurar app</button>
+      </footer>
+    </div>
+
+    <!-- Tab: Progresso -->
+    <div id="tab-progress" class="tab-panel" role="tabpanel" hidden>
+      <section id="lifetime-card" class="lifetime-card glass hidden">
+        <h2 class="section-title">Sua história completa</h2>
+        <p class="section-desc">Recaídas não apagam o que você já conquistou.</p>
+        <div class="lifetime-stats">
+          <div class="lifetime-stat">
+            <span id="lifetime-days" class="lifetime-value">0</span>
+            <span class="lifetime-label">dias livres no total</span>
+          </div>
+          <div class="lifetime-stat">
+            <span id="lifetime-restarts" class="lifetime-value">0</span>
+            <span class="lifetime-label">recomeços</span>
+          </div>
+        </div>
+        <div id="relapse-history" class="relapse-history"></div>
+      </section>
+
+      <section class="journey-card glass">
+        <h2 class="section-title">Sua jornada</h2>
+        <p class="section-desc">Linha do tempo da recuperação — do passado ao futuro.</p>
+        <div id="journey-timeline" class="journey-timeline"></div>
+      </section>
+
+      <section class="section">
+        <h2 class="section-title">Marcos de saúde</h2>
+        <div id="milestones" class="milestones"></div>
+      </section>
+
+      <section class="section">
+        <h2 class="section-title">O que seu corpo está fazendo</h2>
+        <div id="health-timeline" class="timeline"></div>
+      </section>
+    </div>
+
+    <!-- Tab: Futuro -->
+    <div id="tab-future" class="tab-panel" role="tabpanel" hidden>
+      <section class="future-hero glass">
+        <span class="future-hero-icon" aria-hidden="true">🌅</span>
+        <h2 class="future-hero-title">Seu futuro sem pods</h2>
+        <p class="future-hero-desc">Cada fissura vencida é um passo. Veja o que te espera se continuar.</p>
+      </section>
+
+      <section class="section">
+        <h2 class="section-title">Projeções</h2>
+        <div id="projections" class="projections-grid"></div>
+      </section>
+
+      <section class="future-benefits glass">
+        <h2 class="section-title">O que vai acontecer</h2>
+        <div id="future-benefits" class="future-list"></div>
+      </section>
+
+      <section class="letter-card glass">
+        <p class="letter-label">Carta do seu eu do futuro</p>
+        <p id="future-letter" class="letter-text"></p>
+      </section>
+    </div>
+
+    <button id="btn-craving" class="fab-craving" type="button" aria-label="Segure e respire — ajuda para fissura">
+      <span class="fab-icon">🫁</span>
+      <span class="fab-label">Soltar</span>
+    </button>
+
+    <nav class="bottom-nav" aria-label="Navegação principal">
+      <button class="nav-item active" data-tab="home" type="button" aria-current="page">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>
+        <span>Início</span>
+      </button>
+      <button class="nav-item" data-tab="cravings" type="button">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        <span>Fissuras</span>
+      </button>
+      <button class="nav-item" data-tab="progress" type="button">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+        <span>Progresso</span>
+      </button>
+      <button class="nav-item" data-tab="future" type="button">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.56 5.82 22 7 14.14l-5-4.87 6.91-1.01z"/></svg>
+        <span>Futuro</span>
+      </button>
+    </nav>
+  </main>
+
+  <!-- Craving modal — 3 passos -->
+  <div id="craving-modal" class="modal hidden" role="dialog" aria-labelledby="modal-title" aria-modal="true">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-content modal-sheet">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <button id="modal-close" class="modal-close" type="button" aria-label="Fechar">&times;</button>
+      <div class="modal-header">
+        <h2 id="modal-title" class="modal-title-serif">Segure. Isso vai passar.</h2>
+        <p class="modal-subtitle">A fissura é química — não é fraqueza. Siga os 3 passos.</p>
+      </div>
+      <div class="step-indicators" aria-hidden="true">
+        <span class="step-dot active" data-step="0"></span>
+        <span class="step-line"></span>
+        <span class="step-dot" data-step="1"></span>
+        <span class="step-line"></span>
+        <span class="step-dot" data-step="2"></span>
+      </div>
+      <div id="craving-step-panel" class="craving-step-panel">
+        <span id="step-icon" class="step-icon" aria-hidden="true">💧</span>
+        <h3 id="step-title" class="step-title">Hidrate</h3>
+        <p id="step-desc" class="step-desc"></p>
+        <div id="step-breathe" class="step-breathe hidden">
+          <div class="breath-circle"></div>
+          <p id="step-breath-label" class="breath-label">Inspire...</p>
+        </div>
+        <div class="modal-timer">
+          <svg class="timer-ring" viewBox="0 0 100 100" aria-hidden="true">
+            <circle class="timer-bg" cx="50" cy="50" r="45"/>
+            <circle id="timer-progress" class="timer-progress" cx="50" cy="50" r="45"/>
+          </svg>
+          <span id="modal-countdown" class="timer-text" aria-live="polite">60</span>
+        </div>
+      </div>
+      <button id="btn-step-next" class="btn btn-primary btn-full" type="button">Próximo passo</button>
+      <button id="btn-resisted" class="btn btn-primary btn-full hidden" type="button">Soltou essa fissura ✓</button>
+    </div>
+  </div>
+
+  <!-- Trigger map modal -->
+  <div id="trigger-modal" class="modal hidden" role="dialog" aria-labelledby="trigger-title" aria-modal="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content modal-sheet">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <h2 id="trigger-title" class="modal-title-serif">O que disparou?</h2>
+      <p class="modal-subtitle">3 toques — ajuda a entender seus padrões.</p>
+      <p class="chip-label">Gatilho</p>
+      <div id="trigger-chips" class="chip-grid" role="group" aria-label="Gatilho da fissura"></div>
+      <p class="chip-label">O que ajudou a soltar</p>
+      <div id="substitute-chips" class="chip-grid" role="group" aria-label="Substituto usado"></div>
+      <button id="btn-save-trigger" class="btn btn-primary btn-full" type="button">Registrar</button>
+      <button id="btn-skip-trigger" class="btn btn-text btn-full" type="button">Pular por agora</button>
+    </div>
+  </div>
+
+  <!-- Settings modal -->
+  <div id="settings-modal" class="modal hidden" role="dialog" aria-labelledby="settings-title" aria-modal="true">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-content modal-sheet modal-scroll">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <button id="settings-close" class="modal-close" type="button" aria-label="Fechar">&times;</button>
+      <h2 id="settings-title">Configurações</h2>
+
+      <div class="settings-group">
+        <h3 class="settings-group-title">🔔 Alertas</h3>
+        <label class="toggle-row">
+          <span>Ativar notificações</span>
+          <input type="checkbox" id="alert-enabled" class="toggle-input">
+          <span class="toggle-switch"></span>
+        </label>
+        <label class="toggle-row">
+          <span>Lembrete diário de motivação</span>
+          <input type="checkbox" id="alert-daily" class="toggle-input">
+          <span class="toggle-switch"></span>
+        </label>
+        <div class="field" id="alert-time-wrap">
+          <label for="alert-time">Horário do lembrete</label>
+          <input type="time" id="alert-time" value="09:00">
+        </div>
+        <label class="toggle-row">
+          <span>Alertas de marcos conquistados</span>
+          <input type="checkbox" id="alert-milestones" class="toggle-input" checked>
+          <span class="toggle-switch"></span>
+        </label>
+        <button id="btn-test-notification" class="btn btn-ghost btn-full" type="button">Testar notificação</button>
+      </div>
+
+      <form id="settings-form" class="setup-form">
+        <h3 class="settings-group-title">⚙️ Dados</h3>
+        <div class="field">
+          <label for="edit-quit-datetime">Data e hora que decidiu parar</label>
+          <input type="datetime-local" id="edit-quit-datetime" required>
+        </div>
+        <div class="field">
+          <label for="edit-days-per-pod">Duração média de um pod (dias)</label>
+          <input type="number" id="edit-days-per-pod" min="0.5" step="0.5" inputmode="decimal" required>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="edit-pod-cost">Custo por pod (R$)</label>
+            <input type="number" id="edit-pod-cost" min="1" step="0.5" inputmode="decimal" required>
+          </div>
+          <div class="field">
+            <label for="edit-nicotine-mg">Nicotina por pod (mg)</label>
+            <input type="number" id="edit-nicotine-mg" min="1" step="1" inputmode="numeric" required>
+          </div>
+        </div>
+        <div class="field">
+          <label for="edit-pod-ml">Volume do pod (ml)</label>
+          <input type="number" id="edit-pod-ml" min="0.5" step="0.1" inputmode="decimal" required>
+        </div>
+        <div class="field">
+          <label for="edit-reason">Seu porquê</label>
+          <textarea id="edit-reason" rows="3"></textarea>
+        </div>
+        <div class="field">
+          <label for="edit-goodbye-letter">Carta de despedida ao pod</label>
+          <textarea id="edit-goodbye-letter" rows="3" placeholder="O que o pod representava para você"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Salvar alterações</button>
+      </form>
+
+      <div class="settings-group settings-danger">
+        <h3 class="settings-group-title">🤍 Recaída</h3>
+        <p class="settings-hint">Usar um pod não apaga sua jornada. Registrar ajuda a recomeçar sem culpa.</p>
+        <button id="btn-relapse-settings" class="btn btn-ghost btn-full" type="button">Registrei uma recaída</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <!-- Relapse modal -->
+  <div id="relapse-modal" class="modal hidden" role="dialog" aria-labelledby="relapse-title" aria-modal="true">
+    <div class="modal-backdrop" data-close-relapse></div>
+    <div class="modal-content modal-sheet">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <button id="relapse-close" class="modal-close" type="button" aria-label="Fechar">&times;</button>
+      <div class="relapse-header">
+        <span class="relapse-icon" aria-hidden="true">🤍</span>
+        <h2 id="relapse-title" class="modal-title-serif">Recaídas fazem parte</h2>
+      </div>
+      <p id="relapse-message" class="relapse-message"></p>
+      <p id="relapse-stats" class="relapse-stats"></p>
+      <div class="field">
+        <label for="relapse-datetime">Quando você usou?</label>
+        <input type="datetime-local" id="relapse-datetime" required>
+      </div>
+      <div class="field">
+        <label for="relapse-note">O que aconteceu? (opcional)</label>
+        <textarea id="relapse-note" rows="2" placeholder="Ex: estresse no trabalho, encontro com amigos..."></textarea>
+      </div>
+      <button id="btn-relapse-confirm" class="btn btn-primary btn-full" type="button">Recomeçar com compaixão</button>
+      <button id="btn-relapse-cancel" class="btn btn-text btn-full" type="button">Ainda estou firme</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
