@@ -174,6 +174,13 @@
         <p id="peak-hours-insight" class="peak-insight"></p>
       </section>
 
+      <section class="mood-craving-card glass">
+        <h2 class="section-title">Humor × fissuras</h2>
+        <p class="section-desc">Como seu humor se relaciona com as fissuras nos últimos 7 dias.</p>
+        <div id="mood-craving-chart" class="mood-craving-chart" aria-label="Gráfico de humor e fissuras"></div>
+        <p id="mood-craving-insight" class="peak-insight"></p>
+      </section>
+
       <section class="interactive-timeline-section glass">
         <h2 class="section-title">Linha do tempo</h2>
         <p class="section-desc">Toque em um evento para ver detalhes da sua jornada.</p>
@@ -303,6 +310,15 @@
           </div>
         </div>
         <div id="relapse-history" class="relapse-history"></div>
+      </section>
+
+      <section class="achievements-section glass">
+        <div class="section-header-row">
+          <h2 class="section-title">Conquistas</h2>
+          <span id="achievements-count" class="peak-badge">0/0</span>
+        </div>
+        <p class="section-desc">Marcos da sua jornada — desbloqueie conforme avança.</p>
+        <div id="achievements-grid" class="achievements-grid"></div>
       </section>
 
       <section class="journey-card glass">
@@ -455,7 +471,25 @@
           <input type="checkbox" id="alert-milestones" class="toggle-input" checked>
           <span class="toggle-switch"></span>
         </label>
+        <label class="toggle-row">
+          <span>Alerta no horário de pico</span>
+          <input type="checkbox" id="alert-peak-hour" class="toggle-input" checked>
+          <span class="toggle-switch"></span>
+        </label>
+        <label class="toggle-row">
+          <span>Som ao conquistar marcos</span>
+          <input type="checkbox" id="alert-celebration-sound" class="toggle-input" checked>
+          <span class="toggle-switch"></span>
+        </label>
         <button id="btn-test-notification" class="btn btn-ghost btn-full" type="button">Testar notificação</button>
+      </div>
+
+      <div class="settings-group">
+        <h3 class="settings-group-title">💾 Backup</h3>
+        <p class="settings-hint">Exporte seus dados para não perder nada. Importe em outro dispositivo ou após limpar o navegador.</p>
+        <button id="btn-export-data" class="btn btn-ghost btn-full" type="button">Exportar backup (JSON)</button>
+        <button id="btn-import-data" class="btn btn-ghost btn-full" type="button">Importar backup</button>
+        <input type="file" id="import-file-input" class="hidden" accept="application/json,.json">
       </div>
 
       <form id="settings-form" class="setup-form">
@@ -502,6 +536,17 @@
   </div>
 
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <!-- Celebração: marco ou conquista -->
+  <div id="celebration-overlay" class="celebration-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="celebration-title">
+    <div class="celebration-card">
+      <span id="celebration-icon" class="celebration-icon" aria-hidden="true">🎉</span>
+      <p id="celebration-label" class="celebration-label">Conquista desbloqueada</p>
+      <h2 id="celebration-title" class="celebration-title"></h2>
+      <p id="celebration-desc" class="celebration-desc"></p>
+      <button id="celebration-close" class="btn btn-primary btn-full" type="button">Continuar</button>
+    </div>
+  </div>
 
   <!-- Relapse modal -->
   <div id="relapse-modal" class="modal hidden" role="dialog" aria-labelledby="relapse-title" aria-modal="true">

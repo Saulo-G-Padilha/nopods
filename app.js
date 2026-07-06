@@ -188,6 +188,22 @@
     'Soltar de novo é possível. Você já sabe o caminho.',
   ];
 
+  const MOOD_ICONS = { great: '😊', ok: '😐', hard: '😔', strong: '💪' };
+
+  const ACHIEVEMENTS = [
+    { id: 'first_craving', icon: '🔥', title: 'Primeira soltada', desc: 'Soltou a primeira fissura', test: (d) => d.cravingsResisted >= 1 },
+    { id: 'cravings_10', icon: '💨', title: '10 fissuras', desc: 'Soltou 10 fissuras', test: (d) => d.cravingsResisted >= 10 },
+    { id: 'cravings_50', icon: '⚡', title: '50 fissuras', desc: 'Soltou 50 fissuras', test: (d) => d.cravingsResisted >= 50 },
+    { id: 'day_1', icon: '🌅', title: '1 dia', desc: '24 horas sem pod', test: (_, h) => h >= 24 },
+    { id: 'day_3', icon: '🌿', title: '3 dias', desc: '72 horas livre', test: (_, h) => h >= 72 },
+    { id: 'week_1', icon: '🌟', title: '1 semana', desc: '7 dias sem pod', test: (_, h) => h >= 168 },
+    { id: 'month_1', icon: '🏆', title: '1 mês', desc: '30 dias de jornada', test: (_, h) => h >= 720 },
+    { id: 'money_100', icon: '💰', title: 'R$ 100+', desc: 'Economizou cem reais', test: (d, h) => (h / 24 / d.daysPerPod) * d.podCost >= 100 },
+    { id: 'money_500', icon: '🏦', title: 'R$ 500+', desc: 'Meio mil reais no bolso', test: (d, h) => (h / 24 / d.daysPerPod) * d.podCost >= 500 },
+    { id: 'mood_week', icon: '📊', title: 'Check-in', desc: '7 dias registrando humor', test: (d) => Object.keys(d.moods || {}).length >= 7 },
+    { id: 'comeback', icon: '🤍', title: 'Recomeço', desc: 'Voltou com compaixão', test: (d) => (d.lifetime?.relapses || 0) >= 1 },
+  ];
+
   let data = null;
   let timerInterval = null;
   let alertInterval = null;
@@ -200,7 +216,7 @@
   let selectedSubstitute = null;
   let selectedTimelineFilter = 'all';
   let selectedTimelineId = null;
-  let motivationIndex = null;
+  let motivationText = null;
   let activeTab = 'home';
   let toastTimeout = null;
   let scrollPosition = 0;
@@ -239,7 +255,16 @@
   }
 
   function defaultAlerts() {
-    return { enabled: false, daily: true, time: '09:00', milestones: true, lastDaily: null };
+    return {
+      enabled: false,
+      daily: true,
+      time: '09:00',
+      milestones: true,
+      peakHour: true,
+      celebrationSound: true,
+      lastDaily: null,
+      lastPeakAlert: null,
+    };
   }
 
   function normalizeData(saved) {
@@ -252,8 +277,14 @@
       delete saved.podsPerDay;
     }
     if (!saved.alerts) saved.alerts = defaultAlerts();
+    else {
+      if (saved.alerts.peakHour === undefined) saved.alerts.peakHour = true;
+      if (saved.alerts.celebrationSound === undefined) saved.alerts.celebrationSound = true;
+      if (saved.alerts.lastPeakAlert === undefined) saved.alerts.lastPeakAlert = null;
+    }
     if (!saved.moods) saved.moods = {};
     if (!saved.notifiedMilestones) saved.notifiedMilestones = [];
+    if (!saved.unlockedAchievements) saved.unlockedAchievements = [];
     if (!saved.cravingLog) saved.cravingLog = [];
     if (!saved.goodbyeLetter) saved.goodbyeLetter = '';
     if (!saved.relapses) saved.relapses = [];
@@ -504,12 +535,31 @@
       if (hours >= m.hours && !data.notifiedMilestones.includes(m.hours)) {
         data.notifiedMilestones.push(m.hours);
         saveData();
-        const msg = `Marco conquistado: ${m.title}! ${m.desc}`;
-        showBanner('🎉 ' + msg);
+        celebrateUnlock({
+          icon: m.icon,
+          label: 'Marco de saúde',
+          title: m.title,
+          desc: m.desc,
+        });
         sendNotification('NoPods — Marco conquistado!', `${m.icon} ${m.title}: ${m.desc}`);
-        showToast(`Marco: ${m.title}! 🎉`);
       }
     });
+  }
+
+  function checkPeakHourAlert() {
+    if (!data?.alerts?.enabled || data.alerts.peakHour === false) return;
+    const peak = getPeakHourInfo();
+    if (!peak.hasData) return;
+    const now = new Date();
+    if (now.getHours() !== peak.peakHour) return;
+    const today = dateKey(now);
+    if (data.alerts.lastPeakAlert === today) return;
+    data.alerts.lastPeakAlert = today;
+    saveData();
+    const h = String(peak.peakHour).padStart(2, '0');
+    const msg = `Costuma ser difícil às ${h}h. Mãos ocupadas, água por perto.`;
+    showBanner('⏰ ' + msg);
+    sendNotification('NoPods — Horário de pico', msg);
   }
 
   function checkDailyReminder() {
@@ -531,9 +581,12 @@
     if (alertInterval) clearInterval(alertInterval);
     checkMilestoneAlerts();
     checkDailyReminder();
+    checkPeakHourAlert();
     alertInterval = setInterval(() => {
       checkMilestoneAlerts();
       checkDailyReminder();
+      checkPeakHourAlert();
+      checkAchievements();
     }, 30000);
   }
 
@@ -606,7 +659,10 @@
       haptic(8);
       playTabEnter(nextPanel);
       if (tab === 'future') renderFuture();
-      if (tab === 'progress') renderLifetime();
+      if (tab === 'progress') {
+        renderLifetime();
+        renderAchievements();
+      }
       if (tab === 'home') renderDashboard();
       if (tab === 'cravings') {
         renderDailyCravings();
@@ -649,6 +705,7 @@
         alerts: defaultAlerts(),
         moods: {},
         notifiedMilestones: [],
+        unlockedAchievements: [],
       });
       saveData();
       haptic([20, 50, 20]);
@@ -713,6 +770,10 @@
     $('#relapse-close').addEventListener('click', closeRelapseModal);
     $$('[data-close-relapse]').forEach((el) => el.addEventListener('click', closeRelapseModal));
     $('#btn-test-notification').addEventListener('click', testNotification);
+    $('#btn-export-data')?.addEventListener('click', exportData);
+    $('#btn-import-data')?.addEventListener('click', () => $('#import-file-input')?.click());
+    $('#import-file-input')?.addEventListener('change', handleImportFile);
+    $('#celebration-close')?.addEventListener('click', closeCelebration);
 
     $('#alert-enabled').addEventListener('change', async (e) => {
       if (e.target.checked) {
@@ -736,6 +797,7 @@
         if (!settingsModal.classList.contains('hidden')) closeModal(settingsModal);
         if (!triggerModal.classList.contains('hidden')) closeTriggerModal();
         if (!relapseModal.classList.contains('hidden')) closeRelapseModal();
+        if (!$('#celebration-overlay')?.classList.contains('hidden')) closeCelebration();
       }
     });
   }
@@ -746,7 +808,10 @@
       daily: $('#alert-daily').checked,
       time: $('#alert-time').value,
       milestones: $('#alert-milestones').checked,
+      peakHour: $('#alert-peak-hour')?.checked ?? true,
+      celebrationSound: $('#alert-celebration-sound')?.checked ?? true,
       lastDaily: data.alerts?.lastDaily || null,
+      lastPeakAlert: data.alerts?.lastPeakAlert || null,
     };
   }
 
@@ -779,9 +844,10 @@
     } else if (msgEl) {
       msgEl.textContent = MOOD_MESSAGES[mood];
     }
-    motivationIndex = null;
+    motivationText = null;
     renderMotivation();
     renderDashboardPills();
+    renderMoodCravingChart();
     haptic(10);
   }
 
@@ -808,6 +874,8 @@
     $('#alert-daily').checked = data.alerts.daily;
     $('#alert-time').value = data.alerts.time || '09:00';
     $('#alert-milestones').checked = data.alerts.milestones;
+    $('#alert-peak-hour').checked = data.alerts.peakHour !== false;
+    $('#alert-celebration-sound').checked = data.alerts.celebrationSound !== false;
     openModal(settingsModal);
   }
 
@@ -1033,6 +1101,106 @@
     }
   }
 
+  function spawnConfetti() {
+    if (prefersReducedMotion()) return;
+    const layer = $('#particles');
+    if (!layer) return;
+    const colors = ['#7ec8b8', '#e8b86d', '#b8a0d8', '#e07a6a', '#7ec8a0'];
+    for (let i = 0; i < 36; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle confetti';
+      p.style.left = Math.random() * 100 + 'vw';
+      p.style.top = '-12px';
+      p.style.background = colors[i % colors.length];
+      p.style.animationDelay = (Math.random() * 0.5) + 's';
+      p.style.animationDuration = (1.8 + Math.random() * 1.2) + 's';
+      layer.appendChild(p);
+      setTimeout(() => p.remove(), 3200);
+    }
+  }
+
+  function playCelebrationSound() {
+    if (!data?.alerts?.celebrationSound || prefersReducedMotion()) return;
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.setValueAtTime(523, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(784, ctx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.35);
+    } catch { /* silencioso */ }
+  }
+
+  function celebrateUnlock({ icon, label, title, desc }) {
+    spawnConfetti();
+    playCelebrationSound();
+    haptic([20, 40, 30]);
+    showBanner(`🎉 ${title}`);
+    showToast(`${icon} ${title}!`);
+
+    const overlay = $('#celebration-overlay');
+    if (!overlay) return;
+    $('#celebration-icon').textContent = icon;
+    $('#celebration-label').textContent = label;
+    $('#celebration-title').textContent = title;
+    $('#celebration-desc').textContent = desc;
+    overlay.classList.remove('hidden');
+    lockScroll();
+  }
+
+  function closeCelebration() {
+    const overlay = $('#celebration-overlay');
+    if (overlay) overlay.classList.add('hidden');
+    unlockScroll();
+  }
+
+  function exportData() {
+    if (!data) return;
+    const payload = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      app: 'NoPods',
+      data,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `nopods-backup-${dateKey(new Date())}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Backup exportado 📁');
+    haptic(10);
+  }
+
+  function handleImportFile(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result);
+        const imported = parsed.data || parsed;
+        if (!imported.quitAt) throw new Error('invalid');
+        if (!confirm('Importar este backup? Seus dados atuais serão substituídos.')) return;
+        data = normalizeData(imported);
+        saveData();
+        renderAll();
+        showToast('Backup restaurado com sucesso 🌿');
+        haptic([15, 30, 15]);
+      } catch {
+        showToast('Arquivo inválido. Use um backup do NoPods.');
+      }
+      e.target.value = '';
+    };
+    reader.readAsText(file);
+  }
+
   function closeModal(modal) {
     modal.classList.add('hidden');
     unlockScroll();
@@ -1055,6 +1223,7 @@
     renderDailyCravings();
     renderNextMilestone();
     renderDashboard();
+    checkAchievements();
     haptic([30, 50, 30]);
     const today = getCravingsOnDate(dateKey(new Date()));
     showToast(`Você soltou essa fissura! Hoje: ${today} 🌿`);
@@ -1154,6 +1323,65 @@
     return { hasData: true, peakHour, hours, max };
   }
 
+  function truncateText(text, max) {
+    if (!text || text.length <= max) return text;
+    return text.slice(0, max - 3) + '...';
+  }
+
+  function buildPersonalizedMessages() {
+    if (!data) return [];
+    const msgs = [];
+    const days = Math.floor(getCurrentAttemptDays());
+    const hours = getElapsedHours();
+    const money = getPodsAvoided(hours / 24) * data.podCost;
+    const cravings = data.cravingsResisted;
+    const peak = getPeakHourInfo();
+
+    if (data.reason) {
+      const short = truncateText(data.reason, 90);
+      msgs.push(days > 0
+        ? `Você parou porque: "${short}" — ${days} dia${days > 1 ? 's' : ''} depois, isso ainda vale.`
+        : `Você parou porque: "${short}". Hoje é o primeiro passo.`);
+    }
+
+    if (days >= 1) {
+      msgs.push(`${days} dia${days > 1 ? 's' : ''} sem pod. ${days < 3 ? 'O pior já tá passando.' : 'Isso é real.'}`);
+    }
+
+    if (cravings > 0) {
+      msgs.push(`Você já soltou ${cravings} fissura${cravings > 1 ? 's' : ''} — cada uma reforça o novo hábito.`);
+    }
+
+    if (money >= data.podCost) {
+      msgs.push(`Já são ${formatMoney(money)} que ficaram com você em vez do pod.`);
+    }
+
+    if (peak.hasData) {
+      const h = String(peak.peakHour).padStart(2, '0');
+      if (peak.peakHour === new Date().getHours()) {
+        msgs.push(`São ${h}h — seu horário de pico. Água por perto, sem pressa.`);
+      } else {
+        msgs.push(`Suas fissuras costumam bater perto das ${h}h. Você já sabe quando se preparar.`);
+      }
+    }
+
+    const todayMood = data.moods[dateKey(new Date())];
+    if (todayMood === 'hard') {
+      msgs.push('Dia pesado hoje — não precisa ser perfeito, só não comprar o pod.');
+    }
+
+    return msgs;
+  }
+
+  function getMotivationPool() {
+    const personal = buildPersonalizedMessages();
+    const indices = getContextualMotivationPool();
+    const staticMsgs = indices
+      ? indices.map((i) => MOTIVATIONAL_MESSAGES[i])
+      : MOTIVATIONAL_MESSAGES;
+    return [...personal, ...staticMsgs];
+  }
+
   function getContextualMotivationPool() {
     const today = dateKey(new Date());
     const mood = data.moods[today];
@@ -1171,17 +1399,22 @@
     const el = $('#motivation-text');
     if (!el) return;
 
-    const indices = getContextualMotivationPool();
-    const pool = indices || MOTIVATIONAL_MESSAGES.map((_, i) => i);
+    const pool = getMotivationPool();
+    if (!pool.length) return;
 
     if (forceNew) {
-      const candidates = pool.filter((i) => i !== motivationIndex);
-      motivationIndex = candidates[Math.floor(Math.random() * candidates.length)] ?? pool[0];
-    } else if (motivationIndex === null) {
-      motivationIndex = pool[new Date().getDate() % pool.length];
+      const candidates = pool.filter((t) => t !== motivationText);
+      motivationText = candidates[Math.floor(Math.random() * candidates.length)] ?? pool[0];
+    } else if (motivationText === null) {
+      const personal = buildPersonalizedMessages();
+      if (personal.length && new Date().getDate() % 3 !== 0) {
+        motivationText = personal[new Date().getDate() % personal.length];
+      } else {
+        motivationText = pool[new Date().getDate() % pool.length];
+      }
     }
 
-    const text = MOTIVATIONAL_MESSAGES[motivationIndex];
+    const text = motivationText;
 
     if (forceNew && !prefersReducedMotion()) {
       el.classList.add('is-exiting');
@@ -1456,10 +1689,115 @@
     }
   }
 
+  function checkAchievements() {
+    if (!data) return;
+    const hours = getElapsedHours();
+    const newlyUnlocked = [];
+
+    ACHIEVEMENTS.forEach((a) => {
+      if (data.unlockedAchievements.includes(a.id)) return;
+      if (a.test(data, hours)) {
+        data.unlockedAchievements.push(a.id);
+        newlyUnlocked.push(a);
+      }
+    });
+
+    if (newlyUnlocked.length) {
+      saveData();
+      newlyUnlocked.forEach((a, i) => {
+        setTimeout(() => {
+          celebrateUnlock({
+            icon: a.icon,
+            label: 'Conquista desbloqueada',
+            title: a.title,
+            desc: a.desc,
+          });
+        }, i * 3200);
+      });
+      renderAchievements();
+    }
+  }
+
+  function renderAchievements() {
+    const grid = $('#achievements-grid');
+    const countEl = $('#achievements-count');
+    if (!grid || !data) return;
+
+    const hours = getElapsedHours();
+    const unlocked = data.unlockedAchievements || [];
+    const unlockedCount = ACHIEVEMENTS.filter((a) => unlocked.includes(a.id)).length;
+
+    if (countEl) countEl.textContent = `${unlockedCount}/${ACHIEVEMENTS.length}`;
+
+    grid.innerHTML = ACHIEVEMENTS.map((a) => {
+      const isUnlocked = unlocked.includes(a.id);
+      const almost = !isUnlocked && a.test(data, hours);
+      return `<div class="achievement-badge${isUnlocked ? ' unlocked' : ''}${almost ? ' almost' : ''}" title="${a.desc}">
+        <span class="achievement-icon">${a.icon}</span>
+        <span class="achievement-title">${a.title}</span>
+        <span class="achievement-desc">${isUnlocked ? 'Desbloqueada' : a.desc}</span>
+      </div>`;
+    }).join('');
+  }
+
+  function renderMoodCravingChart() {
+    const chart = $('#mood-craving-chart');
+    const insight = $('#mood-craving-insight');
+    if (!chart || !insight) return;
+
+    const days = getLast7Days();
+    const max = Math.max(...days.map((d) => d.count), 1);
+    const todayKey = dateKey(new Date());
+    const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const animate = !prefersReducedMotion();
+
+    const moodCounts = { hard: 0, ok: 0, great: 0, strong: 0 };
+    let hardCravings = 0;
+    let easyCravings = 0;
+    let moodDays = 0;
+
+    chart.innerHTML = days.map((d, i) => {
+      const mood = data.moods[d.key];
+      const h = Math.max(4, (d.count / max) * 80);
+      const isToday = d.key === todayKey;
+      const moodIcon = mood ? MOOD_ICONS[mood] : '·';
+      const barCls = `mood-craving-bar${isToday ? ' today' : ''}${animate ? ' bar-grow' : ''}`;
+      const barStyle = animate ? `--h:${h}px;--i:${i}` : `height:${h}px`;
+
+      if (mood) {
+        moodCounts[mood] = (moodCounts[mood] || 0) + 1;
+        moodDays++;
+        if (mood === 'hard') hardCravings += d.count;
+        else easyCravings += d.count;
+      }
+
+      return `<div class="mood-craving-col">
+        <span class="mood-craving-mood${mood ? ' has-mood' : ''}">${moodIcon}</span>
+        <span class="mood-craving-count">${d.count}</span>
+        <div class="${barCls}" style="${barStyle}"></div>
+        <span class="mood-craving-label">${dayNames[d.date.getDay()]}</span>
+      </div>`;
+    }).join('');
+
+    if (moodDays < 2) {
+      insight.textContent = 'Registre seu humor no check-in diário para ver como ele se relaciona com suas fissuras.';
+      return;
+    }
+
+    if (hardCravings > easyCravings && hardCravings > 0) {
+      insight.textContent = 'Nos dias difíceis você tende a soltar mais fissuras — normal. O check-in ajuda a se preparar.';
+    } else if (easyCravings > hardCravings) {
+      insight.textContent = 'Mesmo com fissuras, seus dias bons superam os pesados. O padrão tá melhorando.';
+    } else {
+      insight.textContent = 'Humor e fissuras variam — o importante é continuar registrando para entender seu ritmo.';
+    }
+  }
+
   function renderDashboard() {
     renderMotivation();
     renderDashboardPills();
     renderPeakHours();
+    renderMoodCravingChart();
     renderInteractiveTimeline();
     updateTimelineFilterTrack();
   }
@@ -1483,6 +1821,8 @@
     renderFuture();
     renderTriggerMap();
     renderLifetime();
+    renderAchievements();
+    checkAchievements();
     renderDashboard();
     updateLiberationVisual();
   }
