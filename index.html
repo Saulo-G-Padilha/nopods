@@ -111,6 +111,14 @@
       </div>
     </header>
 
+    <nav class="desktop-tabs" aria-label="Navegação principal">
+      <button class="desktop-tab active" data-tab="home" type="button" aria-current="page">Painel</button>
+      <button class="desktop-tab" data-tab="cravings" type="button">Fissuras</button>
+      <button class="desktop-tab" data-tab="progress" type="button">Progresso</button>
+      <button class="desktop-tab" data-tab="future" type="button">Futuro</button>
+      <button class="desktop-tab" data-tab="learn" type="button">Aprender</button>
+    </nav>
+
     <!-- Alert banner -->
     <div id="alert-banner" class="alert-banner hidden" role="alert">
       <span id="alert-banner-text"></span>
@@ -163,6 +171,10 @@
         <div class="stat-card glass stat-card-dash"><span class="stat-icon">📦</span><span id="pods-avoided" class="stat-value">0</span><span class="stat-label">pods evitados</span></div>
         <div class="stat-card glass stat-card-dash"><span class="stat-icon">🔥</span><span id="cravings-resisted" class="stat-value">0</span><span class="stat-label">fissuras soltas</span></div>
       </div>
+
+      <p id="stats-insight" class="stats-insight glass"></p>
+
+      <button id="btn-share" class="btn btn-ghost btn-full share-btn" type="button">Compartilhar conquista</button>
 
       <section class="peak-hours-card glass">
         <div class="section-header-row">
@@ -261,6 +273,17 @@
         <div class="daily-streak">
           <span class="streak-icon">🔥</span>
           <span id="craving-streak" class="streak-text">0 dias registrando vitórias</span>
+        </div>
+      </section>
+
+      <section class="emergency-kit-section glass">
+        <h2 class="section-title">Kit de emergência</h2>
+        <p class="section-desc">Fissura agora? Toque em uma ação — cada uma ajuda de um jeito diferente.</p>
+        <div id="emergency-kit" class="emergency-kit"></div>
+        <div id="emergency-timer" class="emergency-timer hidden" role="timer" aria-live="polite">
+          <span class="emergency-timer-label">Espere a onda passar</span>
+          <span id="emergency-timer-value" class="emergency-timer-value">5:00</span>
+          <button id="emergency-timer-cancel" class="btn btn-text" type="button">Cancelar</button>
         </div>
       </section>
 
@@ -566,6 +589,24 @@
   </div>
 
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <!-- Share modal -->
+  <div id="share-modal" class="modal hidden" role="dialog" aria-labelledby="share-title" aria-modal="true">
+    <div class="modal-backdrop" data-close-share></div>
+    <div class="modal-content modal-sheet">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <button id="share-close" class="modal-close" type="button" aria-label="Fechar">&times;</button>
+      <h2 id="share-title" class="modal-title-serif">Compartilhar conquista</h2>
+      <p class="share-modal-desc">Mostre o que você já conquistou — sem expor dados pessoais.</p>
+      <div id="share-preview" class="share-preview" aria-hidden="true"></div>
+      <canvas id="share-canvas" class="hidden" width="1080" height="1080" aria-hidden="true"></canvas>
+      <div class="share-actions">
+        <button id="btn-share-download" class="btn btn-primary btn-full" type="button">Salvar imagem</button>
+        <button id="btn-share-copy" class="btn btn-ghost btn-full" type="button">Copiar texto</button>
+        <button id="btn-share-native" class="btn btn-ghost btn-full" type="button">Compartilhar…</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Celebração: marco ou conquista -->
   <div id="celebration-overlay" class="celebration-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="celebration-title">

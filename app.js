@@ -176,6 +176,17 @@
     },
   ];
 
+  const EMERGENCY_KIT = [
+    { icon: '💧', title: 'Água gelada', desc: 'Um gole grande. Ocupar a boca ajuda a segurar a onda.', action: 'step', step: 0 },
+    { icon: '🫁', title: 'Respirar 90s', desc: '4-7-8: inspire, segure, expire. A fissura costuma passar antes.', action: 'step', step: 1 },
+    { icon: '🚶', title: 'Mover o corpo', desc: 'Caminhe até a janela ou escada. Dopamina sem nicotina.', action: 'step', step: 2 },
+    { icon: '⏱️', title: 'Esperar 5 min', desc: 'Fissura é uma onda — sobe e desce. Só marca o tempo.', action: 'timer', seconds: 300 },
+    { icon: '🧊', title: 'Gelo na mão', desc: 'Segure um cubo. A sensação forte desvia o foco por minutos.', action: 'tip' },
+    { icon: '🦷', title: 'Escovar os dentes', desc: 'Menta + boca ocupada. Muda o ambiente do impulso.', action: 'tip' },
+    { icon: '📱', title: 'Mandar mensagem', desc: '"Tô com fissura" pra alguém de confiança. Não precisa explicar.', action: 'tip' },
+    { icon: '✦', title: 'Fluxo Soltar', desc: 'Os 3 passos guiados completos: água, respiração e movimento.', action: 'full' },
+  ];
+
   const MOTIVATIONAL_MESSAGES = [
     'Os primeiros dias são os piores. Não é impressão sua — é o corpo reclamando.',
     'A cabeça vai inventar mil desculpas pra comprar um pod. A maioria não faz sentido nenhum.',
@@ -286,6 +297,7 @@
   let alertInterval = null;
   let cravingInterval = null;
   let breathInterval = null;
+  let emergencyTimerInterval = null;
   let currentStep = 0;
   let stepSeconds = 0;
   let stepTotalSeconds = 60;
@@ -309,6 +321,7 @@
   const settingsModal = $('#settings-modal');
   const triggerModal = $('#trigger-modal');
   const relapseModal = $('#relapse-modal');
+  const shareModal = $('#share-modal');
 
   // ── Utils ──
   function toDatetimeLocal(date) {
@@ -728,7 +741,7 @@
         panel.classList.toggle('active', isActive);
         panel.hidden = !isActive;
       });
-      $$('.nav-item').forEach((btn) => {
+      $$('.nav-item, .desktop-tab').forEach((btn) => {
         const isActive = btn.dataset.tab === tab;
         btn.classList.toggle('active', isActive);
         btn.setAttribute('aria-current', isActive ? 'page' : null);
@@ -810,7 +823,7 @@
       showToast('Configurações salvas');
     });
 
-    $$('.nav-item').forEach((btn) => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
+    $$('.nav-item, .desktop-tab').forEach((btn) => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
 
     $$('.mood-btn').forEach((btn) => {
       btn.addEventListener('click', () => setMood(btn.dataset.mood));
@@ -847,6 +860,13 @@
     $('#btn-relapse').addEventListener('click', openRelapseModal);
     $('#btn-relapse-settings').addEventListener('click', () => { closeModal(settingsModal); openRelapseModal(); });
     $('#btn-learn-relapse')?.addEventListener('click', openRelapseModal);
+    $('#btn-share')?.addEventListener('click', openShareModal);
+    $('#share-close')?.addEventListener('click', closeShareModal);
+    $$('[data-close-share]').forEach((el) => el.addEventListener('click', closeShareModal));
+    $('#btn-share-download')?.addEventListener('click', downloadShareImage);
+    $('#btn-share-copy')?.addEventListener('click', copyShareText);
+    $('#btn-share-native')?.addEventListener('click', nativeShare);
+    $('#emergency-timer-cancel')?.addEventListener('click', cancelEmergencyTimer);
     $('#btn-relapse-confirm').addEventListener('click', confirmRelapse);
     $('#btn-relapse-cancel').addEventListener('click', closeRelapseModal);
     $('#relapse-close').addEventListener('click', closeRelapseModal);
@@ -879,6 +899,7 @@
         if (!settingsModal.classList.contains('hidden')) closeModal(settingsModal);
         if (!triggerModal.classList.contains('hidden')) closeTriggerModal();
         if (!relapseModal.classList.contains('hidden')) closeRelapseModal();
+        if (!shareModal?.classList.contains('hidden')) closeShareModal();
         if (!$('#celebration-overlay')?.classList.contains('hidden')) closeCelebration();
       }
     });
@@ -968,8 +989,12 @@
   }
 
   function openCravingModal() {
+    openCravingModalAt(0);
+  }
+
+  function openCravingModalAt(step = 0) {
     haptic(30);
-    currentStep = 0;
+    currentStep = step;
     selectedTrigger = null;
     selectedSubstitute = null;
     $('#btn-step-next').classList.remove('hidden');
@@ -1910,7 +1935,280 @@
     checkAchievements();
     renderDashboard();
     renderLearn();
+    renderEmergencyKit();
     updateLiberationVisual();
+  }
+
+  function getShareData() {
+    const totalHours = getElapsedHours();
+    const days = Math.floor(totalHours / 24);
+    const hours = Math.floor(totalHours % 24);
+    const elapsedDays = totalHours / 24;
+    const pods = getPodsAvoided(elapsedDays);
+    const nicotineMg = pods * data.nicotineMg;
+    let timeLabel;
+    if (days > 0) timeLabel = `${days} dia${days !== 1 ? 's' : ''} sem pod`;
+    else if (hours > 0) timeLabel = `${hours} hora${hours !== 1 ? 's' : ''} sem pod`;
+    else timeLabel = 'Começando agora';
+
+    return {
+      days,
+      hours,
+      timeLabel,
+      money: formatMoney(pods * data.podCost),
+      nicotine: formatNicotine(nicotineMg),
+      pods: pods >= 10 ? String(Math.round(pods)) : pods.toFixed(1),
+      cravings: data.cravingsResisted,
+      nicotineMg,
+    };
+  }
+
+  function buildShareCardHTML(d) {
+    return `<div class="share-card-visual">
+      <div class="share-card-brand">◈ NoPods</div>
+      <div class="share-card-hero">
+        <div class="share-card-days">${d.timeLabel}</div>
+        <div class="share-card-sub">Livre de nicotina salina</div>
+      </div>
+      <div class="share-card-stats">
+        <div class="share-card-stat"><span class="share-card-stat-value">${d.money}</span><span class="share-card-stat-label">economizados</span></div>
+        <div class="share-card-stat"><span class="share-card-stat-value">${d.nicotine}</span><span class="share-card-stat-label">nicotina evitada</span></div>
+        <div class="share-card-stat"><span class="share-card-stat-value">${d.pods}</span><span class="share-card-stat-label">pods evitados</span></div>
+        <div class="share-card-stat"><span class="share-card-stat-value">${d.cravings}</span><span class="share-card-stat-label">fissuras soltas</span></div>
+      </div>
+      <div class="share-card-footer">nopods.vercel.app</div>
+    </div>`;
+  }
+
+  function getShareText() {
+    const d = getShareData();
+    return `${d.timeLabel} 🫁\n💰 ${d.money} economizados\n🧪 ${d.nicotine} de nicotina evitada\n🔥 ${d.cravings} fissuras soltas\n\nnopods.vercel.app`;
+  }
+
+  function drawShareCanvas() {
+    const canvas = $('#share-canvas');
+    if (!canvas) return null;
+    const ctx = canvas.getContext('2d');
+    const d = getShareData();
+    const w = canvas.width;
+    const h = canvas.height;
+
+    const grad = ctx.createLinearGradient(0, 0, w, h);
+    grad.addColorStop(0, '#0f1419');
+    grad.addColorStop(0.5, '#1a2332');
+    grad.addColorStop(1, '#0d1f1a');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.fillStyle = '#5eead4';
+    ctx.font = 'bold 36px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('◈ NOPODS', 80, 100);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '500 72px Georgia, serif';
+    ctx.textAlign = 'center';
+    const lines = d.timeLabel.split(' ');
+    let y = 420;
+    if (d.timeLabel.length > 18) {
+      ctx.font = '500 56px Georgia, serif';
+      y = 400;
+    }
+    ctx.fillText(d.timeLabel, w / 2, y);
+
+    ctx.fillStyle = 'rgba(232, 240, 236, 0.65)';
+    ctx.font = '32px system-ui, sans-serif';
+    ctx.fillText('Livre de nicotina salina', w / 2, y + 56);
+
+    const stats = [
+      [d.money, 'economizados'],
+      [d.nicotine, 'nicotina evitada'],
+      [d.pods, 'pods evitados'],
+      [`${d.cravings}`, 'fissuras soltas'],
+    ];
+    const boxW = 420;
+    const boxH = 120;
+    const gap = 24;
+    const gridX = (w - boxW * 2 - gap) / 2;
+    const gridY = 560;
+
+    stats.forEach(([val, label], i) => {
+      const col = i % 2;
+      const row = Math.floor(i / 2);
+      const x = gridX + col * (boxW + gap);
+      const yPos = gridY + row * (boxH + gap);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
+      roundRect(ctx, x, yPos, boxW, boxH, 20);
+      ctx.fill();
+      ctx.fillStyle = '#5eead4';
+      ctx.font = 'bold 40px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(val, x + boxW / 2, yPos + 52);
+      ctx.fillStyle = 'rgba(232, 240, 236, 0.5)';
+      ctx.font = '22px system-ui, sans-serif';
+      ctx.fillText(label.toUpperCase(), x + boxW / 2, yPos + 88);
+    });
+
+    ctx.fillStyle = 'rgba(232, 240, 236, 0.35)';
+    ctx.font = '26px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('nopods.vercel.app', w / 2, h - 80);
+
+    return canvas;
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  function updateSharePreview() {
+    const preview = $('#share-preview');
+    if (!preview) return;
+    preview.innerHTML = buildShareCardHTML(getShareData());
+    drawShareCanvas();
+  }
+
+  function openShareModal() {
+    updateSharePreview();
+    openModal(shareModal);
+    haptic(8);
+  }
+
+  function closeShareModal() {
+    if (shareModal) closeModal(shareModal);
+  }
+
+  async function downloadShareImage() {
+    const canvas = drawShareCanvas();
+    if (!canvas) return;
+    const link = document.createElement('a');
+    link.download = `nopods-${Math.floor(getElapsedHours() / 24)}dias.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showToast('Imagem salva');
+    haptic(12);
+  }
+
+  async function copyShareText() {
+    try {
+      await navigator.clipboard.writeText(getShareText());
+      showToast('Texto copiado');
+      haptic(8);
+    } catch {
+      showToast('Não foi possível copiar');
+    }
+  }
+
+  async function nativeShare() {
+    const text = getShareText();
+    const canvas = drawShareCanvas();
+    if (navigator.share && canvas) {
+      try {
+        const blob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
+        const file = new File([blob], 'nopods.png', { type: 'image/png' });
+        if (navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ title: 'NoPods', text, files: [file] });
+          return;
+        }
+        await navigator.share({ title: 'NoPods', text });
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+      }
+    }
+    await copyShareText();
+  }
+
+  function formatTimerDisplay(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+  }
+
+  function cancelEmergencyTimer() {
+    if (emergencyTimerInterval) clearInterval(emergencyTimerInterval);
+    emergencyTimerInterval = null;
+    $('#emergency-timer')?.classList.add('hidden');
+  }
+
+  function startEmergencyTimer(seconds) {
+    cancelEmergencyTimer();
+    const wrap = $('#emergency-timer');
+    const display = $('#emergency-timer-value');
+    if (!wrap || !display) return;
+    let remaining = seconds;
+    display.textContent = formatTimerDisplay(remaining);
+    wrap.classList.remove('hidden');
+    haptic(12);
+    emergencyTimerInterval = setInterval(() => {
+      remaining -= 1;
+      display.textContent = formatTimerDisplay(remaining);
+      if (remaining <= 0) {
+        cancelEmergencyTimer();
+        showToast('Passou! A fissura costuma aliviar agora.');
+        haptic(20);
+      }
+    }, 1000);
+  }
+
+  function handleEmergencyAction(item) {
+    haptic(10);
+    if (item.action === 'step') {
+      openCravingModalAt(item.step);
+    } else if (item.action === 'full') {
+      openCravingModalAt(0);
+    } else if (item.action === 'timer') {
+      startEmergencyTimer(item.seconds);
+    } else if (item.action === 'tip') {
+      showToast(item.desc);
+    }
+  }
+
+  function renderEmergencyKit() {
+    const container = $('#emergency-kit');
+    if (!container) return;
+
+    if (!container.dataset.rendered) {
+      container.innerHTML = EMERGENCY_KIT.map((item, i) => `
+        <button type="button" class="emergency-item" data-kit-idx="${i}">
+          <span class="emergency-item-icon" aria-hidden="true">${item.icon}</span>
+          <span class="emergency-item-title">${item.title}</span>
+          <span class="emergency-item-desc">${item.desc}</span>
+        </button>
+      `).join('');
+      container.dataset.rendered = '1';
+      container.addEventListener('click', (e) => {
+        const btn = e.target.closest('.emergency-item');
+        if (!btn) return;
+        const idx = parseInt(btn.dataset.kitIdx, 10);
+        if (!Number.isNaN(idx) && EMERGENCY_KIT[idx]) handleEmergencyAction(EMERGENCY_KIT[idx]);
+      });
+    }
+  }
+
+  function renderStatsInsight() {
+    const el = $('#stats-insight');
+    if (!el || !data) return;
+    const elapsedDays = getElapsedHours() / 24;
+    const pods = getPodsAvoided(elapsedDays);
+    const nicotineMg = pods * data.nicotineMg;
+    if (nicotineMg < 1) {
+      el.textContent = '';
+      return;
+    }
+    const nic = formatNicotine(nicotineMg);
+    const podLabel = pods >= 1 ? ` — equivalente a ${pods >= 10 ? Math.round(pods) : pods.toFixed(1)} pods` : '';
+    el.textContent = `Seu corpo não recebeu ${nic} de nicotina salina desde que parou${podLabel}.`;
   }
 
   function renderLearn() {
@@ -1983,6 +2281,7 @@
     bumpStat($('#nicotine-avoided'), formatNicotine(pods * data.nicotineMg));
     bumpStat($('#pods-avoided'), pods >= 10 ? String(Math.round(pods)) : pods.toFixed(1));
     bumpStat($('#cravings-resisted'), String(data.cravingsResisted));
+    renderStatsInsight();
   }
 
   function formatMoney(val) {
