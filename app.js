@@ -25,10 +25,10 @@
   ];
 
   const MOOD_MESSAGES = {
-    great: 'Que bom! Aproveite esse momento de força. 🌿',
-    ok: 'Dias normais também contam. Você está indo bem.',
-    hard: 'Dias difíceis passam. Use o botão de fissura se precisar.',
-    strong: 'Sua determinação é inspiradora. Continue! 💪',
+    great: 'Bom sinal. Guarda esse humor pra quando apertar de novo.',
+    ok: 'Dia normal também conta. Não precisa ser épico todo dia.',
+    hard: 'Peso no peito é normal nessa fase. O Soltar tá aqui se precisar.',
+    strong: 'Tá segurando bem. Segue no seu ritmo.',
   };
 
   const MILESTONES = [
@@ -100,36 +100,40 @@
   };
 
   const MOTIVATIONAL_MESSAGES = [
-    'Cada hora sem pod é uma vitória silenciosa. Você está vencendo.',
-    'A fissura é um visitante — ela bate, você não abre a porta.',
-    'Seu corpo está se curando agora mesmo. Confie no processo.',
-    'Você não perdeu o pod — você ganhou liberdade.',
-    'Respirar fundo custa zero e funciona melhor que nicotina.',
-    'O impulso passa em minutos. A liberdade fica para sempre.',
-    'Você já provou que é capaz. Hoje é mais um dia de prova.',
-    'Soltar um hábito é difícil porque você é humano, não fraco.',
-    'Cada fissura que você solta reescreve seu cérebro.',
-    'O dinheiro que você economiza é só um bônus. A paz é o prêmio.',
-    'Nicotina mentiu para você por anos. Hoje você vê a verdade.',
-    'Não é sobre nunca sentir fissura — é sobre escolher não ceder.',
-    'Seu eu de amanhã vai agradecer por esta hora.',
-    'A dependência foi construída puff a puff. A liberdade também, dia a dia.',
-    'Você merece acordar sem precisar de um pod para funcionar.',
-    'Estresse, tédio, ansiedade — a fissura sempre inventa desculpas. Você inventa saídas.',
-    'Quanto mais dias passam, mais raro fica o impulso. Continue.',
-    'Liberdade não é fazer o que quer — é não ser escravo do pod.',
-    'Seu pulmão, seu coração, seu bolso — todos torcendo por você.',
-    'Recomeçar depois de tropeçar ainda é coragem. Siga.',
-    'A nicotina saiu do seu sangue. Agora o hábito está saindo da mente.',
-    'Você não está perdendo nada. Está recuperando tudo.',
-    'Hoje você escolheu ser mais forte que um líquido em um cartucho.',
-    'A melhor versão de você não precisa de sais de nicotina.',
-    'Cada "não" ao pod é um "sim" para a sua vida.',
-    'A fissura grita. Você responde com calma. Ela cede primeiro.',
-    'Você está desaprendendo um hábito poderoso. Isso leva tempo — e vale a pena.',
-    'O pod prometia alívio. Só entregava mais necessidade.',
-    'Seu progresso é real, mesmo nos dias difíceis.',
-    'Amanhecer sem fissura é possível. Você está chegando lá.',
+    'Os primeiros dias são os piores. Não é impressão sua — é o corpo reclamando.',
+    'A cabeça vai inventar mil desculpas pra comprar um pod. A maioria não faz sentido nenhum.',
+    'Aquela vontade depois do café? Normal. Em uns minutos passa.',
+    'Três dias sem pod é mais do que parece quando você tá no meio disso.',
+    'Seu corpo tá se acostumando sem nicotina. Vai ficar estranho um tempo.',
+    'Os primeiros dias mentem. Parece que nunca vai melhorar. Melhora.',
+    'Esse horário costuma ser difícil pra você. Mãos ocupadas, água por perto.',
+    'Se a fissura bater agora, você já conhece o roteiro. Água, respira, espera.',
+    'Hora de pico. Nada de novo — só cuidado redobrado nesse momento.',
+    'Dia pesado não apaga o que você já fez. Só não compra o pod hoje.',
+    'Hoje tá difícil? Ok. Não precisa ser o melhor dia — só não ser o dia que você usou.',
+    'Fissura forte não quer dizer que você vai ceder. Quer dizer que o hábito tá perdendo força.',
+    'Ninguém vê você resistindo. Mas você tá resistindo. Isso conta.',
+    'Recomeçar depois de tropeçar não é volta à estaca zero. Você já sabe o caminho.',
+    'Tá indo bem. Não precisa comemorar em voz alta — só segue.',
+    'Aproveita esse momento tranquilo. Guarda ele pra quando apertar de novo.',
+    'Você já provou que consegue ficar sem. Um tropeço não apaga isso.',
+    'Dias bons existem nessa jornada. Esse parece ser um deles.',
+    'O pod não resolve nada. Só adia a ansiedade e cobra juros depois.',
+    'Você não precisa de "só mais um". Nunca precisou.',
+    'Tem gente gastando fortuna nisso sem nem calcular. Você calculou — e parou.',
+    'Acordar sem pensar em pod já vale o esforço de ontem.',
+    'É estranho não ter o pod no bolso. Isso some com o tempo.',
+    'A fissura dura uns minutos. O arrependimento de usar dura mais.',
+    'Usar virou automático. Parar também vira — só demora mais.',
+    'Café sem pod no começo é esquisito. Mas funciona.',
+    'Um dia você vai esquecer de checar quanto tempo faz. Esse dia chega.',
+    'Largar pod é chato. Usar e se arrepender depois também é.',
+    'Não é falta de força. É química — e química muda com o tempo.',
+    'O hit some em segundos. A vontade de outro pod fica.',
+    'Você não tá largando prazer. Tá largando uma armadilha que fingia ser alívio.',
+    'Mão no bolso procurando o que não tá mais lá? Normal. Isso passa.',
+    'O pod prometia relaxar. Na prática só criava mais ansiedade.',
+    'Se bater vontade agora, não discute com ela. Espera cinco minutos e vê se ainda quer.',
   ];
 
   const CRAVING_STEPS = [
@@ -1156,10 +1160,10 @@
     const days = getCurrentAttemptDays();
     const peak = getPeakHourInfo();
 
-    if (mood === 'hard') return [9, 15, 19, 21, 29];
-    if (mood === 'strong' || mood === 'great') return [6, 7, 23, 24, 29];
-    if (days < 3) return [0, 5, 8, 16, 17, 28];
-    if (peak.hasData && peak.peakHour === new Date().getHours()) return [1, 8, 14, 27];
+    if (mood === 'hard') return [9, 10, 11, 12, 13];
+    if (mood === 'strong' || mood === 'great') return [14, 15, 16, 17, 13];
+    if (days < 3) return [0, 1, 2, 3, 4, 5];
+    if (peak.hasData && peak.peakHour === new Date().getHours()) return [6, 7, 8, 2, 33];
     return null;
   }
 
