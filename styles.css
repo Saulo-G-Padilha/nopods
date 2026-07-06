@@ -1424,6 +1424,114 @@ body.modal-open { overflow: hidden; position: fixed; width: 100%; }
 .future-hero-title { font-family: var(--font-serif); font-size: 1.5rem; font-weight: 500; margin-bottom: 8px; }
 .future-hero-desc { font-size: 0.88rem; color: var(--text-muted); line-height: 1.5; }
 
+/* ── Learn tab ── */
+.learn-hero { padding: 28px 20px; margin-bottom: 20px; text-align: center; }
+.learn-hero-icon { font-size: 2.5rem; display: block; margin-bottom: 10px; }
+.learn-hero-title { font-family: var(--font-serif); font-size: 1.5rem; font-weight: 500; margin-bottom: 8px; }
+.learn-hero-desc { font-size: 0.88rem; color: var(--text-muted); line-height: 1.5; }
+
+.learn-section { margin-bottom: 24px; }
+
+.myths-list { display: flex; flex-direction: column; gap: 10px; }
+
+.myth-card {
+  width: 100%;
+  text-align: left;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  cursor: pointer;
+  font-family: var(--font);
+  color: var(--text);
+  transition: border-color var(--transition), background var(--transition);
+  position: relative;
+}
+
+.myth-card:active { transform: scale(0.99); }
+
+.myth-card.expanded {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.myth-badge, .truth-badge {
+  display: inline-block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 20px;
+  margin-bottom: 8px;
+}
+
+.myth-badge { background: rgba(251, 146, 60, 0.15); color: var(--amber); }
+.truth-badge { background: rgba(74, 222, 128, 0.15); color: var(--success); }
+
+.myth-text {
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.45;
+  padding-right: 24px;
+}
+
+.myth-truth {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.myth-card.expanded .myth-truth { animation: mythReveal 0.3s ease; }
+
+@keyframes mythReveal {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.truth-text {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.myth-chevron {
+  position: absolute;
+  top: 18px;
+  right: 16px;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  transition: transform 0.3s var(--ease-spring);
+}
+
+.myth-card.expanded .myth-chevron { transform: rotate(180deg); color: var(--accent); }
+
+.restart-guide { display: flex; flex-direction: column; gap: 12px; }
+
+.restart-card {
+  display: flex;
+  gap: 14px;
+  padding: 18px;
+  align-items: flex-start;
+}
+
+.restart-icon { font-size: 1.5rem; flex-shrink: 0; line-height: 1; margin-top: 2px; }
+.restart-title { font-size: 0.92rem; font-weight: 600; margin-bottom: 6px; }
+.restart-text { font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; }
+
+.learn-cta {
+  padding: 20px;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.learn-cta-text {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
 .projections-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
 
 .projection-card {
@@ -1590,7 +1698,7 @@ body.celebrating .fab-craving {
   position: absolute;
   top: 0;
   left: 0;
-  width: 25%;
+  width: calc(100% / var(--nav-count, 5));
   height: 3px;
   background: linear-gradient(90deg, var(--accent), var(--amber));
   border-radius: 0 0 4px 4px;
@@ -1610,7 +1718,7 @@ body.celebrating .fab-craving {
   border: none;
   color: var(--text-muted);
   font-family: var(--font);
-  font-size: 0.6rem;
+  font-size: 0.55rem;
   font-weight: 500;
   cursor: pointer;
   padding: 6px 2px;

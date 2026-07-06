@@ -97,7 +97,84 @@
     cravings: 'Fissuras',
     progress: 'Progresso',
     future: 'Futuro',
+    learn: 'Aprender',
   };
+
+  const MYTHS_TRUTHS = [
+    {
+      myth: 'Pod de nicotina é "mais seguro" que cigarro, então não vicia de verdade.',
+      truth: 'Um pod pode ter até 50mg de nicotina — às vezes mais que um maço inteiro. Os sais de nicotina foram feitos para entrar no sangue ainda mais rápido. A dependência é real, e muita gente subestima.',
+    },
+    {
+      myth: 'Só usar em festa ou no happy hour não conta como dependência.',
+      truth: 'Se você sente vontade antes de sair, compra "só por precaução" ou fica inquieto sem pod por perto — isso já é sinal. Não precisa usar todo dia para estar preso.',
+    },
+    {
+      myth: 'Vou conseguir parar quando quiser, porque não é cigarro.',
+      truth: 'A nicotina vicia independente do veículo — cigarro, vape ou pod. Muita gente descobre que parar de pod é tão difícil quanto parar de fumar, às vezes mais, porque o pod está sempre na mão.',
+    },
+    {
+      myth: 'Se eu reduzir o mg, paro naturalmente.',
+      truth: 'Trocar de 50mg para 35mg ou 20mg pode ajudar como estratégia, mas raramente resolve sozinho. O hábito — mão na boca, pausas, gatilhos — continua. Reduzir sem plano costuma só alongar a dependência.',
+    },
+    {
+      myth: 'Fissura é fraqueza. Quem quer de verdade não sente.',
+      truth: 'Fissura é abstinência química, não caráter. O cérebro associou certos momentos com nicotina. Resistir não é "ser forte" — é saber que a onda passa em minutos.',
+    },
+    {
+      myth: 'Um dia usando não faz mal depois de tantos dias parado.',
+      truth: 'Um pod hoje reativa circuitos que estavam adormecendo. Não apaga seus dias anteriores, mas aumenta a chance de comprar outro amanhã. Por isso registra e recomeça — não finge que não aconteceu.',
+    },
+    {
+      myth: 'Recaída apaga todo o progresso — voltei à estaca zero.',
+      truth: 'Seu corpo não desfez as semanas sem nicotina. Os receptores já se adaptaram parcialmente. Recomeçar costuma ser mais rápido — o que você aprendeu sobre gatilhos e fissuras ainda serve.',
+    },
+    {
+      myth: 'Não preciso de ajuda porque pod não é "coisa séria".',
+      truth: 'Dependência de nicotina é diagnóstico médico, inclusive por vape e pod. Grupos de apoio, terapia e substitutos existem e funcionam. Pedir ajuda não é drama — é inteligência.',
+    },
+    {
+      myth: 'O vapor é só água, não faz mal pro pulmão.',
+      truth: 'Vape e pod liberam partículas finas, metais e compostos químicos. Não é só vapor de água. Os pulmões já melhoram depois de parar — outro motivo para não voltar "só um pouco".',
+    },
+    {
+      myth: 'Depois que passar a abstinência, nunca mais vou sentir vontade.',
+      truth: 'A abstinência física melhora nas primeiras semanas, mas gatilhos emocionais — estresse, tédio, álcool — podem voltar meses depois. Não significa fracasso. O hábito ainda lembra do pod em certas situações.',
+    },
+  ];
+
+  const RESTART_GUIDE = [
+    {
+      icon: '🤍',
+      title: 'Recaída não é o fim da história',
+      body: 'Usar um pod de novo dói — especialmente depois de dias ou semanas limpo. Mas não define quem você é. Muita gente largou de vez depois de várias tentativas.',
+    },
+    {
+      icon: '📊',
+      title: 'O que você conquistou não some',
+      body: 'Cada dia sem pod, cada fissura resistida e cada real economizado continua na sua história. O NoPods guarda isso em "Sua história completa", na aba Progresso.',
+    },
+    {
+      icon: '🔄',
+      title: 'Recomeçar é diferente de começar do zero',
+      body: 'Você já conhece seus horários de pico, seus gatilhos e o que ajuda na fissura. Na segunda tentativa, esse mapa é ouro. Use o que aprendeu.',
+    },
+    {
+      icon: '⏱️',
+      title: 'As primeiras 72 horas de novo',
+      body: 'Se você acabou de recair, os próximos dias podem ser intensos — não porque você falhou, mas porque a nicotina voltou. Água, sono e evitar álcool ajudam.',
+    },
+    {
+      icon: '💬',
+      title: 'Conte pra alguém (ou pra você)',
+      body: 'Esconder a recaída aumenta a vergonha e a chance de continuar. Escreva na carta do eu do futuro, manda mensagem pra um amigo ou registra aqui. Nomear o que aconteceu tira peso.',
+    },
+    {
+      icon: '🆘',
+      title: 'Quando buscar ajuda profissional',
+      body: 'Se você já tentou várias vezes, usa pod o dia inteiro ou sente ansiedade forte ao parar — conversar com médico ou psicólogo não é exagero. Existe tratamento para dependência de nicotina.',
+    },
+  ];
 
   const MOTIVATIONAL_MESSAGES = [
     'Os primeiros dias são os piores. Não é impressão sua — é o corpo reclamando.',
@@ -445,12 +522,13 @@
     }
   }
 
-  const TAB_ORDER = ['home', 'cravings', 'progress', 'future'];
+  const TAB_ORDER = ['home', 'cravings', 'progress', 'future', 'learn'];
 
   function updateNavIndicator(tab) {
     const ind = $('#nav-indicator');
     if (!ind) return;
     const idx = Math.max(0, TAB_ORDER.indexOf(tab));
+    ind.style.setProperty('--nav-count', TAB_ORDER.length);
     ind.style.setProperty('--nav-index', idx);
   }
 
@@ -670,6 +748,7 @@
         renderDailyCravings();
         renderTriggerMap();
       }
+      if (tab === 'learn') renderLearn();
     };
 
     if (!prefersReducedMotion() && currentPanel && nextPanel) {
@@ -767,6 +846,7 @@
     $('#btn-reset').addEventListener('click', resetApp);
     $('#btn-relapse').addEventListener('click', openRelapseModal);
     $('#btn-relapse-settings').addEventListener('click', () => { closeModal(settingsModal); openRelapseModal(); });
+    $('#btn-learn-relapse')?.addEventListener('click', openRelapseModal);
     $('#btn-relapse-confirm').addEventListener('click', confirmRelapse);
     $('#btn-relapse-cancel').addEventListener('click', closeRelapseModal);
     $('#relapse-close').addEventListener('click', closeRelapseModal);
@@ -1829,7 +1909,53 @@
     renderAchievements();
     checkAchievements();
     renderDashboard();
+    renderLearn();
     updateLiberationVisual();
+  }
+
+  function renderLearn() {
+    const mythsList = $('#myths-list');
+    const restartGuide = $('#restart-guide');
+    if (!mythsList || !restartGuide) return;
+
+    if (!mythsList.dataset.rendered) {
+      mythsList.innerHTML = MYTHS_TRUTHS.map((item, i) => `
+        <button type="button" class="myth-card" role="listitem" data-myth-idx="${i}" aria-expanded="false">
+          <span class="myth-badge">Mito</span>
+          <p class="myth-text">${item.myth}</p>
+          <div class="myth-truth" hidden>
+            <span class="truth-badge">Verdade</span>
+            <p class="truth-text">${item.truth}</p>
+          </div>
+          <span class="myth-chevron" aria-hidden="true">▼</span>
+        </button>
+      `).join('');
+      mythsList.dataset.rendered = '1';
+
+      mythsList.addEventListener('click', (e) => {
+        const card = e.target.closest('.myth-card');
+        if (!card) return;
+        const expanded = card.getAttribute('aria-expanded') === 'true';
+        const truth = card.querySelector('.myth-truth');
+        card.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+        card.classList.toggle('expanded', !expanded);
+        if (truth) truth.hidden = expanded;
+        haptic(6);
+      });
+    }
+
+    if (!restartGuide.dataset.rendered) {
+      restartGuide.innerHTML = RESTART_GUIDE.map((item) => `
+        <div class="restart-card glass">
+          <span class="restart-icon" aria-hidden="true">${item.icon}</span>
+          <div class="restart-body">
+            <h3 class="restart-title">${item.title}</h3>
+            <p class="restart-text">${item.body}</p>
+          </div>
+        </div>
+      `).join('');
+      restartGuide.dataset.rendered = '1';
+    }
   }
 
   function renderProgressRing() {
