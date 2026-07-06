@@ -55,28 +55,30 @@ function sanitizeHistory(history) {
     .map((m) => ({ role: m.role, content: m.content.slice(0, 800) }));
 }
 
-function mapOpenAIError(status, payload) {
+function mapProviderError(status, payload) {
   const code = payload?.error?.code || payload?.error?.type || '';
   const msg = payload?.error?.message || '';
 
   if (status === 401 || code === 'invalid_api_key') {
-    return 'Chave da OpenAI inválida. Verifique OPENAI_API_KEY na Vercel.';
+    return { error: 'Chave de API inválida na Vercel.', code: code || 'invalid_api_key' };
   }
   if (status === 429 || code === 'insufficient_quota' || code === 'billing_hard_limit_reached') {
-    return 'Sem créditos na OpenAI. Adicione saldo em platform.openai.com/billing';
+    return { error: 'Sem créditos no provedor de IA. Verifique billing ou use GROQ_API_KEY (grátis).', code: code || 'insufficient_quota' };
   }
   if (status === 404 || code === 'model_not_found') {
-    return 'Modelo de IA não disponível nesta conta. Tente outro modelo nas variáveis da Vercel.';
+    return { error: 'Modelo não disponível. Ajuste OPENAI_MODEL na Vercel.', code: code || 'model_not_found' };
   }
   if (code === 'rate_limit_exceeded') {
-    return 'Muitas requisições à OpenAI. Espera um minuto e tenta de novo.';
+    return { error: 'Limite de requisições. Espera um minuto.', code };
   }
-  if (msg && msg.length < 120) return msg;
-  return 'Não consegui responder agora. Tenta de novo em instantes.';
+  return {
+    error: msg && msg.length < 160 ? msg : 'Provedor de IA indisponível.',
+    code: code || `http_${status}`,
+  };
 }
 
-async function callOpenAI(apiKey, messages, model) {
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+async function callChatAPI(baseUrl, apiKey, messages, model, maxTokens = 280) {
+  const response = await fetch(`${baseUrl}/v1/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -85,7 +87,7 @@ async function callOpenAI(apiKey, messages, model) {
     body: JSON.stringify({
       model,
       messages,
-      max_tokens: 280,
+      max_tokens: maxTokens,
       temperature: 0.75,
     }),
   });
@@ -101,7 +103,62 @@ async function callOpenAI(apiKey, messages, model) {
   return { ok: response.ok, status: response.status, payload };
 }
 
+async function tryProviders(messages) {
+  const attempts = [];
+  const openaiKey = process.env.OPENAI_API_KEY?.trim();
+  const groqKey = process.env.GROQ_API_KEY?.trim();
+
+  if (openaiKey) {
+    const model = (process.env.OPENAI_MODEL || 'gpt-4o-mini').trim();
+    const models = model === 'gpt-3.5-turbo' ? [model] : [model, 'gpt-3.5-turbo'];
+    for (const m of models) {
+      attempts.push({
+        provider: 'openai',
+        model: m,
+        result: await callChatAPI('https://api.openai.com', openaiKey, messages, m),
+      });
+    }
+  }
+
+  if (groqKey) {
+    const groqModel = (process.env.GROQ_MODEL || 'llama-3.1-8b-instant').trim();
+    attempts.push({
+      provider: 'groq',
+      model: groqModel,
+      result: await callChatAPI('https://api.groq.com/openai', groqKey, messages, groqModel),
+    });
+  }
+
+  for (const attempt of attempts) {
+    const { ok, status, payload } = attempt.result;
+    if (ok) {
+      const reply = payload?.choices?.[0]?.message?.content?.trim();
+      if (reply) return { reply, provider: attempt.provider };
+    }
+    console.error(`${attempt.provider} error:`, attempt.model, status, JSON.stringify(payload));
+    const mapped = mapProviderError(status, payload);
+    if (status === 401 || mapped.code === 'insufficient_quota') {
+      return { fail: mapped };
+    }
+  }
+
+  const last = attempts[attempts.length - 1];
+  if (last) {
+    return { fail: mapProviderError(last.result.status, last.result.payload) };
+  }
+
+  return { fail: { error: 'Nenhuma chave de IA configurada. Adicione OPENAI_API_KEY ou GROQ_API_KEY na Vercel.', code: 'no_keys' } };
+}
+
 module.exports = async function handler(req, res) {
+  if (req.method === 'GET') {
+    return res.status(200).json({
+      ok: true,
+      openai: Boolean(process.env.OPENAI_API_KEY?.trim()),
+      groq: Boolean(process.env.GROQ_API_KEY?.trim()),
+    });
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método não permitido.' });
   }
@@ -109,11 +166,6 @@ module.exports = async function handler(req, res) {
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || 'unknown';
   if (!checkRateLimit(ip)) {
     return res.status(429).json({ error: 'Muitas mensagens seguidas. Espera um minuto e tenta de novo.' });
-  }
-
-  const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey) {
-    return res.status(503).json({ error: 'Assistente não configurado. Adicione OPENAI_API_KEY na Vercel.' });
   }
 
   const { message, history = [], context = {} } = req.body || {};
@@ -130,34 +182,14 @@ module.exports = async function handler(req, res) {
     { role: 'user', content: message.trim() },
   ];
 
-  const primaryModel = (process.env.OPENAI_MODEL || 'gpt-4o-mini').trim();
-  const fallbackModel = 'gpt-3.5-turbo';
-  const modelsToTry = primaryModel === fallbackModel ? [primaryModel] : [primaryModel, fallbackModel];
-
   try {
-    let lastError = 'Não consegui responder agora. Tenta de novo em instantes.';
-
-    for (const model of modelsToTry) {
-      const { ok, status, payload } = await callOpenAI(apiKey, messages, model);
-      if (ok) {
-        const reply = payload?.choices?.[0]?.message?.content?.trim();
-        if (!reply) {
-          lastError = 'Resposta vazia. Tenta de novo.';
-          continue;
-        }
-        return res.status(200).json({ reply });
-      }
-
-      console.error('OpenAI error:', model, status, JSON.stringify(payload));
-      lastError = mapOpenAIError(status, payload);
-
-      // Não adianta tentar outro modelo se for chave ou crédito
-      if (status === 401 || payload?.error?.code === 'insufficient_quota') break;
+    const outcome = await tryProviders(messages);
+    if (outcome.reply) {
+      return res.status(200).json({ reply: outcome.reply });
     }
-
-    return res.status(502).json({ error: lastError });
+    return res.status(502).json(outcome.fail);
   } catch (err) {
     console.error('craving-chat error:', err);
-    return res.status(500).json({ error: 'Erro interno. Tenta de novo.' });
+    return res.status(500).json({ error: 'Erro interno. Tenta de novo.', code: 'server_error' });
   }
 };

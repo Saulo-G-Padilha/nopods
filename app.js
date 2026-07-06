@@ -1565,6 +1565,38 @@
     if (aiChatModal) closeModal(aiChatModal);
   }
 
+  function getLocalCravingReply(msg, ctx) {
+    const t = msg.toLowerCase();
+    const days = ctx.daysFree ?? 0;
+    const reason = ctx.reason ? ` Lembra: você parou porque ${ctx.reason.slice(0, 80)}.` : '';
+
+    if (/não aguento|nao aguento|desistir|impossível|impossivel/.test(t)) {
+      return `Eu sei que tá pesado. Mas você já ficou ${days > 0 ? `${days} dia${days > 1 ? 's' : ''}` : 'algumas horas'} sem — isso prova que consegue mais uns minutos.${reason} Respira fundo. A onda passa.`;
+    }
+    if (/puff|pod|vape|fumar|usar/.test(t)) {
+      return `A cabeça tá negociando. Um pod agora não resolve — só reinicia a abstinência.${reason} Bebe água, espera 5 minutos e me conta se ainda quer igual.`;
+    }
+    if (/forte|muito|demais|insuport/.test(t)) {
+      return `Fissura forte é sinal de que o hábito tá perdendo força, não de que você é fraco. Segura mais 3 minutos — literalmente conta até 180.${days >= 3 ? ' Você já passou pelo pior da abstinência física.' : ''}`;
+    }
+    if (/5 min|esperar|minuto/.test(t)) {
+      return `Boa. Marca 5 minutos agora — sem pod, sem decisão. Só espera. Mãos ocupadas: água, gelo, ou caminhar até a janela. Eu fico aqui.`;
+    }
+    if (/tédio|entediad|sozinho|solidão|solidao/.test(t)) {
+      return `Tédio é gatilho clássico. O pod preenchia um vazio — mas preenchia mal. Liga pra alguém, ou escreve o que tá sentindo agora. 5 minutos de distração real ajudam.`;
+    }
+    if (/ansied|nervos|pânico|panico|stress|estresse/.test(t)) {
+      return `Ansiedade e nicotina andavam juntas — sem o pod, o corpo ainda não aprendeu outro caminho. 4 segundos inspirando, 7 segurando, 8 expirando. Repete três vezes.`;
+    }
+    if (days === 0) {
+      return `Primeiras horas são as mais cruéis — não é impressão sua. Cada minuto sem pod é vitória invisível.${reason} O que disparou essa vontade agora?`;
+    }
+    if (days < 3) {
+      return `Dia ${days + 1} sem pod. O corpo ainda reclama, mas já tá se adaptando.${reason} Essa fissura dura minutos — não compra o pod por minutos de desconforto.`;
+    }
+    return `Tô aqui com você. A fissura é temporária — já passou antes e vai passar de novo.${reason} O que você pode fazer nos próximos 2 minutos que não seja puxar o pod?`;
+  }
+
   async function sendAiMessage(text) {
     const msg = text?.trim();
     if (!msg || aiChatLoading) return;
@@ -1579,6 +1611,8 @@
     showAiTyping();
     haptic(8);
 
+    const ctx = buildAiContext();
+
     try {
       const res = await fetch('/api/craving-chat', {
         method: 'POST',
@@ -1586,19 +1620,33 @@
         body: JSON.stringify({
           message: msg,
           history: aiChatHistory.slice(0, -1),
-          context: buildAiContext(),
+          context: ctx,
         }),
       });
       const json = await res.json().catch(() => ({}));
       removeAiTyping();
-      if (!res.ok) throw new Error(json.error || 'Não consegui responder agora.');
-      appendAiMessage('assistant', json.reply);
-      aiChatHistory.push({ role: 'assistant', content: json.reply });
+
+      if (res.ok && json.reply) {
+        appendAiMessage('assistant', json.reply);
+        aiChatHistory.push({ role: 'assistant', content: json.reply });
+        haptic(6);
+        return;
+      }
+
+      const local = getLocalCravingReply(msg, ctx);
+      appendAiMessage('assistant', local);
+      aiChatHistory.push({ role: 'assistant', content: local });
+
+      if (json.code === 'no_keys' || json.code === 'insufficient_quota' || json.code === 'invalid_api_key') {
+        appendAiMessage('system', json.error);
+      }
       haptic(6);
-    } catch (err) {
+    } catch {
       removeAiTyping();
-      const fallback = err.message || 'Sem conexão. Usa o fluxo Soltar ou o kit de emergência.';
-      appendAiMessage('system', fallback);
+      const local = getLocalCravingReply(msg, ctx);
+      appendAiMessage('assistant', local);
+      aiChatHistory.push({ role: 'assistant', content: local });
+      haptic(6);
     } finally {
       aiChatLoading = false;
       updateAiSendButton();
