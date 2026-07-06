@@ -499,6 +499,29 @@
       </div>
       <button id="btn-step-next" class="btn btn-primary btn-full" type="button">Próximo passo</button>
       <button id="btn-resisted" class="btn btn-primary btn-full hidden" type="button">Soltou essa fissura ✓</button>
+      <button id="btn-ai-support" class="btn btn-ghost btn-full ai-support-btn" type="button">💬 Preciso conversar agora</button>
+    </div>
+  </div>
+
+  <!-- AI craving support chat -->
+  <div id="ai-chat-modal" class="modal hidden" role="dialog" aria-labelledby="ai-chat-title" aria-modal="true">
+    <div class="modal-backdrop" data-close-ai-chat></div>
+    <div class="modal-content modal-sheet ai-chat-sheet">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <button id="ai-chat-close" class="modal-close" type="button" aria-label="Fechar">&times;</button>
+      <div class="ai-chat-header">
+        <h2 id="ai-chat-title" class="modal-title-serif">Apoio agora</h2>
+        <p class="modal-subtitle">Conversa rápida pra atravessar a fissura — sem julgamento.</p>
+      </div>
+      <div id="ai-chat-messages" class="ai-chat-messages" role="log" aria-live="polite" aria-relevant="additions"></div>
+      <div id="ai-chat-chips" class="ai-chat-chips" role="group" aria-label="Respostas rápidas"></div>
+      <form id="ai-chat-form" class="ai-chat-form">
+        <input type="text" id="ai-chat-input" class="ai-chat-input" placeholder="O que você tá sentindo?" maxlength="500" autocomplete="off">
+        <button id="ai-chat-send" class="ai-chat-send" type="submit" aria-label="Enviar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+        </button>
+      </form>
+      <p class="ai-disclaimer">Não substitui ajuda profissional. Em crise emocional: <strong>CVV 188</strong> (24h).</p>
     </div>
   </div>
 
@@ -558,6 +581,21 @@
           <span class="toggle-switch"></span>
         </label>
         <button id="btn-test-notification" class="btn btn-ghost btn-full" type="button">Testar notificação</button>
+      </div>
+
+      <div class="settings-group">
+        <h3 class="settings-group-title">💬 Assistente de fissura (IA)</h3>
+        <p class="settings-hint">Conversa de apoio nos momentos difíceis. Usa OpenAI — seus dados de jornada podem ser enviados para personalizar as respostas.</p>
+        <label class="toggle-row">
+          <span>Incluir meu porquê nas conversas</span>
+          <input type="checkbox" id="ai-share-reason" class="toggle-input" checked>
+          <span class="toggle-switch"></span>
+        </label>
+        <label class="toggle-row">
+          <span>Incluir humor do dia</span>
+          <input type="checkbox" id="ai-share-mood" class="toggle-input" checked>
+          <span class="toggle-switch"></span>
+        </label>
       </div>
 
       <div class="settings-group">

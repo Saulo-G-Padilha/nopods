@@ -185,6 +185,14 @@
     { icon: '🦷', title: 'Escovar os dentes', desc: 'Menta + boca ocupada. Muda o ambiente do impulso.', action: 'tip' },
     { icon: '📱', title: 'Mandar mensagem', desc: '"Tô com fissura" pra alguém de confiança. Não precisa explicar.', action: 'tip' },
     { icon: '✦', title: 'Fluxo Soltar', desc: 'Os 3 passos guiados completos: água, respiração e movimento.', action: 'full' },
+    { icon: '💬', title: 'Conversar agora', desc: 'Apoio por IA pra atravessar a fissura — sem julgamento.', action: 'ai' },
+  ];
+
+  const AI_QUICK_CHIPS = [
+    'A fissura tá muito forte',
+    'Não aguento mais',
+    'Só quero dar um puff',
+    'Me ajuda a esperar 5 min',
   ];
 
   const WEEK_PROGRAM = [
@@ -383,6 +391,8 @@
   let activeTab = 'home';
   let toastTimeout = null;
   let scrollPosition = 0;
+  let aiChatHistory = [];
+  let aiChatLoading = false;
 
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => document.querySelectorAll(sel);
@@ -396,6 +406,7 @@
   const triggerModal = $('#trigger-modal');
   const relapseModal = $('#relapse-modal');
   const shareModal = $('#share-modal');
+  const aiChatModal = $('#ai-chat-modal');
 
   // ── Utils ──
   function toDatetimeLocal(date) {
@@ -431,6 +442,10 @@
     };
   }
 
+  function defaultAiSettings() {
+    return { shareReason: true, shareMood: true };
+  }
+
   function normalizeData(saved) {
     if (saved.quitDate && !saved.quitAt) {
       saved.quitAt = saved.quitDate.includes('T') ? saved.quitDate : saved.quitDate + 'T00:00:00';
@@ -454,6 +469,11 @@
     if (!saved.relapses) saved.relapses = [];
     if (!saved.lifetime) saved.lifetime = { totalDaysFree: 0, relapses: 0 };
     if (!saved.weekProgramRead) saved.weekProgramRead = [];
+    if (!saved.aiSettings) saved.aiSettings = defaultAiSettings();
+    else {
+      if (saved.aiSettings.shareReason === undefined) saved.aiSettings.shareReason = true;
+      if (saved.aiSettings.shareMood === undefined) saved.aiSettings.shareMood = true;
+    }
     return saved;
   }
 
@@ -884,6 +904,7 @@
         notifiedMilestones: [],
         unlockedAchievements: [],
         weekProgramRead: [],
+        aiSettings: defaultAiSettings(),
       });
       saveData();
       haptic([20, 50, 20]);
@@ -901,6 +922,7 @@
       data.reason = $('#edit-reason').value.trim();
       data.goodbyeLetter = $('#edit-goodbye-letter').value.trim();
       saveAlertsFromForm();
+      saveAiSettingsFromForm();
       saveData();
       closeModal(settingsModal);
       renderAll();
@@ -955,6 +977,20 @@
     $('#btn-share-copy')?.addEventListener('click', copyShareText);
     $('#btn-share-native')?.addEventListener('click', nativeShare);
     $('#emergency-timer-cancel')?.addEventListener('click', cancelEmergencyTimer);
+    $('#btn-ai-support')?.addEventListener('click', () => {
+      closeModal(cravingModal);
+      setTimeout(openAiChatModal, 220);
+    });
+    $('#ai-chat-close')?.addEventListener('click', closeAiChatModal);
+    $$('[data-close-ai-chat]').forEach((el) => el.addEventListener('click', closeAiChatModal));
+    $('#ai-chat-form')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const input = $('#ai-chat-input');
+      if (input?.value.trim()) {
+        sendAiMessage(input.value);
+        input.value = '';
+      }
+    });
     $('#btn-relapse-confirm').addEventListener('click', confirmRelapse);
     $('#btn-relapse-cancel').addEventListener('click', closeRelapseModal);
     $('#relapse-close').addEventListener('click', closeRelapseModal);
@@ -988,6 +1024,7 @@
         if (!triggerModal.classList.contains('hidden')) closeTriggerModal();
         if (!relapseModal.classList.contains('hidden')) closeRelapseModal();
         if (!shareModal?.classList.contains('hidden')) closeShareModal();
+        if (!aiChatModal?.classList.contains('hidden')) closeAiChatModal();
         if (!$('#celebration-overlay')?.classList.contains('hidden')) closeCelebration();
       }
     });
@@ -1003,6 +1040,13 @@
       celebrationSound: $('#alert-celebration-sound')?.checked ?? true,
       lastDaily: data.alerts?.lastDaily || null,
       lastPeakAlert: data.alerts?.lastPeakAlert || null,
+    };
+  }
+
+  function saveAiSettingsFromForm() {
+    data.aiSettings = {
+      shareReason: $('#ai-share-reason')?.checked !== false,
+      shareMood: $('#ai-share-mood')?.checked !== false,
     };
   }
 
@@ -1068,6 +1112,9 @@
     $('#alert-milestones').checked = data.alerts.milestones;
     $('#alert-peak-hour').checked = data.alerts.peakHour !== false;
     $('#alert-celebration-sound').checked = data.alerts.celebrationSound !== false;
+    const ai = data.aiSettings || defaultAiSettings();
+    $('#ai-share-reason').checked = ai.shareReason !== false;
+    $('#ai-share-mood').checked = ai.shareMood !== false;
     openModal(settingsModal);
   }
 
@@ -1407,7 +1454,155 @@
       if (cravingInterval) clearInterval(cravingInterval);
       stopStepBreathing();
     }
-    if (modal === settingsModal) saveAlertsFromForm();
+    if (modal === settingsModal) {
+      saveAlertsFromForm();
+      saveAiSettingsFromForm();
+    }
+    if (modal === aiChatModal) {
+      aiChatHistory = [];
+      removeAiTyping();
+    }
+  }
+
+  function buildAiContext() {
+    const ai = data.aiSettings || defaultAiSettings();
+    const hours = getElapsedHours();
+    const days = Math.floor(hours / 24);
+    const peak = getPeakHourInfo();
+    const moodKey = data.moods[dateKey(new Date())];
+    const moodLabels = { great: 'bem', ok: 'ok', hard: 'difícil', strong: 'forte' };
+    const ctx = {
+      daysFree: days,
+      hoursFree: Math.floor(hours % 24),
+      todayCravings: getCravingsOnDate(dateKey(new Date())),
+      totalCravingsResisted: data.cravingsResisted,
+      restarts: data.lifetime?.relapses || 0,
+    };
+    if (ai.shareMood && moodKey) ctx.mood = moodLabels[moodKey] || moodKey;
+    if (ai.shareReason && data.reason) ctx.reason = truncateText(data.reason, 120);
+    if (isInFirstWeek()) ctx.programDay = getWeekProgramDay();
+    if (peak.hasData) ctx.peakHour = peak.peakHour;
+    return ctx;
+  }
+
+  function appendAiMessage(role, content) {
+    const container = $('#ai-chat-messages');
+    if (!container) return;
+    const el = document.createElement('div');
+    el.className = `ai-msg ai-msg-${role}`;
+    el.textContent = content;
+    container.appendChild(el);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  function showAiTyping() {
+    const container = $('#ai-chat-messages');
+    if (!container || $('#ai-typing-indicator')) return;
+    const el = document.createElement('div');
+    el.id = 'ai-typing-indicator';
+    el.className = 'ai-msg-typing';
+    el.setAttribute('aria-label', 'Digitando');
+    el.innerHTML = '<span></span><span></span><span></span>';
+    container.appendChild(el);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  function removeAiTyping() {
+    $('#ai-typing-indicator')?.remove();
+  }
+
+  function updateAiSendButton() {
+    const btn = $('#ai-chat-send');
+    const input = $('#ai-chat-input');
+    if (btn) btn.disabled = aiChatLoading;
+    if (input) input.disabled = aiChatLoading;
+  }
+
+  function renderAiChips() {
+    const chips = $('#ai-chat-chips');
+    if (!chips) return;
+    const show = aiChatHistory.length <= 1;
+    chips.classList.toggle('hidden', !show);
+    if (!chips.dataset.rendered) {
+      chips.innerHTML = AI_QUICK_CHIPS.map((text) =>
+        `<button type="button" class="ai-chip">${text}</button>`
+      ).join('');
+      chips.dataset.rendered = '1';
+      chips.addEventListener('click', (e) => {
+        const chip = e.target.closest('.ai-chip');
+        if (chip) sendAiMessage(chip.textContent);
+      });
+    }
+  }
+
+  function renderAiWelcome() {
+    const hours = getElapsedHours();
+    const days = Math.floor(hours / 24);
+    let welcome = 'Oi. Tô aqui com você. A fissura é passageira — me conta o que tá acontecendo agora.';
+    if (days === 0 && hours < 6) {
+      welcome = 'Primeiras horas são intensas. Respira comigo — o que você tá sentindo agora?';
+    } else if (days < 3) {
+      welcome = `Dia ${days + 1} sem pod. O corpo ainda tá se adaptando. Me fala como tá.`;
+    }
+    appendAiMessage('assistant', welcome);
+    aiChatHistory.push({ role: 'assistant', content: welcome });
+  }
+
+  function openAiChatModal() {
+    haptic(20);
+    const container = $('#ai-chat-messages');
+    if (container) container.innerHTML = '';
+    aiChatHistory = [];
+    aiChatLoading = false;
+    updateAiSendButton();
+    renderAiWelcome();
+    renderAiChips();
+    openModal(aiChatModal);
+    setTimeout(() => $('#ai-chat-input')?.focus(), 320);
+  }
+
+  function closeAiChatModal() {
+    if (aiChatModal) closeModal(aiChatModal);
+  }
+
+  async function sendAiMessage(text) {
+    const msg = text?.trim();
+    if (!msg || aiChatLoading) return;
+
+    removeAiTyping();
+    appendAiMessage('user', msg);
+    aiChatHistory.push({ role: 'user', content: msg });
+    $('#ai-chat-chips')?.classList.add('hidden');
+
+    aiChatLoading = true;
+    updateAiSendButton();
+    showAiTyping();
+    haptic(8);
+
+    try {
+      const res = await fetch('/api/craving-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: msg,
+          history: aiChatHistory.slice(0, -1),
+          context: buildAiContext(),
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      removeAiTyping();
+      if (!res.ok) throw new Error(json.error || 'Não consegui responder agora.');
+      appendAiMessage('assistant', json.reply);
+      aiChatHistory.push({ role: 'assistant', content: json.reply });
+      haptic(6);
+    } catch (err) {
+      removeAiTyping();
+      const fallback = err.message || 'Sem conexão. Usa o fluxo Soltar ou o kit de emergência.';
+      appendAiMessage('system', fallback);
+    } finally {
+      aiChatLoading = false;
+      updateAiSendButton();
+    }
   }
 
   function resistCraving() {
@@ -2265,6 +2460,8 @@
       openCravingModalAt(0);
     } else if (item.action === 'timer') {
       startEmergencyTimer(item.seconds);
+    } else if (item.action === 'ai') {
+      openAiChatModal();
     } else if (item.action === 'tip') {
       showToast(item.desc);
     }
@@ -2441,6 +2638,7 @@
           e.stopPropagation();
           if (actionBtn.dataset.action === 'soltar') openCravingModal();
           if (actionBtn.dataset.action === 'kit') switchTab('cravings');
+          if (actionBtn.dataset.action === 'ai') openAiChatModal();
           return;
         }
         const card = e.target.closest('.week-day-card');
